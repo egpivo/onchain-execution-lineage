@@ -1,0 +1,9 @@
+{
+  "captured_at_utc": "20260729T123422Z",
+  "pair_label": "USDC_SOL",
+  "input_amount_usd": 1000.0,
+  "slippage_bps": 50,
+  "raw_response_sha256": "93870d19345c13b2d1afe726bf02a0e7bb5d5623cb24364ea9626e398272af72",
+  "had_transaction_field": false,
+  "endpoint": "https://dev-quote-api.dflow.net/quote"
+}
