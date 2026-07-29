@@ -5,6 +5,10 @@ edition = "2021"
 description = "A Rust lab for tracing DFlow quote metadata into unsigned Solana transactions, decoded instructions, accounts, and provenance boundaries."
 license = "MIT"
 
+[lib]
+name = "dflow_lineage"
+path = "src/lib.rs"
+
 [[bin]]
 name = "dflow-lineage"
 path = "src/main.rs"

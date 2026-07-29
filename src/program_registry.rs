@@ -37,3 +37,55 @@ pub fn jito_tip_accounts() -> Vec<&'static str> {
         "DttWaMuVvTiduZRnguLF7jNxTgiMBZ1hyAumKUiL2KRL",
     ]
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashSet;
+    use std::str::FromStr;
+
+    use solana_sdk::pubkey::Pubkey;
+
+    #[test]
+    fn known_programs_cover_core_labels() {
+        let known = known_programs();
+        assert_eq!(
+            known.get("11111111111111111111111111111111"),
+            Some(&"system_program")
+        );
+        assert_eq!(
+            known.get("JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4"),
+            Some(&"jupiter_aggregator_v6")
+        );
+        assert_eq!(
+            known.get("ComputeBudget111111111111111111111111111111"),
+            Some(&"compute_budget")
+        );
+        assert_eq!(
+            known.get("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
+            Some(&"spl_token")
+        );
+        assert_eq!(
+            known.get("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"),
+            Some(&"associated_token_account")
+        );
+    }
+
+    #[test]
+    fn known_program_ids_are_valid_pubkeys() {
+        for id in known_programs().keys() {
+            Pubkey::from_str(id).unwrap_or_else(|_| panic!("invalid program pubkey: {id}"));
+        }
+    }
+
+    #[test]
+    fn jito_tip_accounts_are_unique_valid_pubkeys() {
+        let tips = jito_tip_accounts();
+        assert_eq!(tips.len(), 8);
+        let unique: HashSet<_> = tips.iter().copied().collect();
+        assert_eq!(unique.len(), tips.len());
+        for id in tips {
+            Pubkey::from_str(id).unwrap_or_else(|_| panic!("invalid tip pubkey: {id}"));
+        }
+    }
+}

@@ -81,3 +81,34 @@ pub fn write_dev_endpoint_lineage(out_path: &PathBuf) -> Result<()> {
     wtr.flush()?;
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+
+    #[test]
+    fn write_dev_endpoint_lineage_marks_tx_columns_not_applicable() {
+        let dir = std::env::temp_dir().join(format!(
+            "dflow_lineage_test_{}",
+            std::process::id()
+        ));
+        fs::create_dir_all(&dir).unwrap();
+        let out = dir.join("lineage.csv");
+
+        write_dev_endpoint_lineage(&out).unwrap();
+        let csv = fs::read_to_string(&out).unwrap();
+        let _ = fs::remove_dir_all(&dir);
+
+        assert!(csv.contains("request_id"));
+        assert!(csv.contains("not_applicable"));
+        assert!(
+            !csv.contains("not_yet_decoded"),
+            "dev-endpoint rows must not imply a transaction exists but is undecoded"
+        );
+        assert!(csv.contains("dev-quote-api.dflow.net returns no transaction field"));
+
+        let data_rows = csv.lines().skip(1).filter(|l| !l.is_empty()).count();
+        assert_eq!(data_rows, 5);
+    }
+}

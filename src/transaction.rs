@@ -132,3 +132,71 @@ pub fn decode_base64_transaction(b64: &str) -> Result<DecodedTransaction> {
         unknown_program_ids: unknown_programs.into_iter().collect(),
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use base64::{engine::general_purpose::STANDARD, Engine};
+    use solana_sdk::{
+        hash::Hash,
+        message::Message,
+        pubkey::Pubkey,
+        signature::{Keypair, Signer},
+        transaction::{Transaction, VersionedTransaction},
+    };
+    use std::str::FromStr;
+
+    #[allow(deprecated)]
+    fn encode_transfer(from: &Keypair, to: &Pubkey, lamports: u64) -> String {
+        use solana_sdk::system_instruction;
+        let ix = system_instruction::transfer(&from.pubkey(), to, lamports);
+        let message = Message::new(&[ix], Some(&from.pubkey()));
+        let mut tx = Transaction::new_unsigned(message);
+        tx.message.recent_blockhash = Hash::new_unique();
+        let vtx = VersionedTransaction::from(tx);
+        let raw = bincode::serialize(&vtx).expect("serialize VersionedTransaction");
+        STANDARD.encode(raw)
+    }
+
+    #[test]
+    fn rejects_invalid_base64() {
+        let err = decode_base64_transaction("%%%not-base64%%%").unwrap_err();
+        assert!(err.to_string().contains("invalid base64"));
+    }
+
+    #[test]
+    fn rejects_valid_base64_that_is_not_a_transaction() {
+        let junk = STANDARD.encode(b"not-a-solana-transaction");
+        assert!(decode_base64_transaction(&junk).is_err());
+    }
+
+    #[test]
+    fn decodes_legacy_system_transfer() {
+        let from = Keypair::new();
+        let to = Keypair::new();
+        let b64 = encode_transfer(&from, &to.pubkey(), 42);
+        let decoded = decode_base64_transaction(&b64).unwrap();
+
+        assert_eq!(decoded.transaction_type, "legacy_or_v0_no_alt");
+        assert_eq!(
+            decoded.fee_payer.as_deref(),
+            Some(from.pubkey().to_string()).as_deref()
+        );
+        assert!(decoded.address_lookup_table_references.is_empty());
+        assert_eq!(decoded.instructions.len(), 1);
+        assert_eq!(decoded.instructions[0].program_label, "system_program");
+        assert!(decoded.unknown_program_ids.is_empty());
+        assert!(decoded.candidate_jito_tip_transfers.is_empty());
+    }
+
+    #[test]
+    fn flags_system_transfer_to_known_jito_tip_account() {
+        let from = Keypair::new();
+        let tip = Pubkey::from_str(jito_tip_accounts()[0]).unwrap();
+        let b64 = encode_transfer(&from, &tip, 1000);
+        let decoded = decode_base64_transaction(&b64).unwrap();
+
+        assert_eq!(decoded.candidate_jito_tip_transfers, vec![0]);
+        assert_eq!(decoded.instructions[0].program_label, "system_program");
+    }
+}
