@@ -1,6 +1,6 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use dflow_lineage::{capture, lineage, lookup_tables, transaction};
+use dflow_lineage::{capture, lineage, lookup_tables, rpc, transaction};
 use std::path::PathBuf;
 
 /// Known mints, spot-checked against this project's existing verified
@@ -30,9 +30,15 @@ enum Commands {
         slippage_bps: u32,
     },
     /// Decode a base64 transaction (from a file) and print the JSON result.
+    /// Also resolves any referenced Address Lookup Tables via read-only RPC
+    /// -- an unsigned transaction's ALTs are still real, already-created
+    /// on-chain accounts, so this works even though the transaction itself
+    /// was never submitted.
     Decode {
         #[arg(long)]
         file: PathBuf,
+        #[arg(long, default_value = "https://api.mainnet-beta.solana.com")]
+        rpc_url: String,
     },
     /// Fetch a real, already-settled transaction by signature via public
     /// RPC (read-only) and decode it -- used to verify the decoder against
@@ -46,7 +52,10 @@ enum Commands {
     },
     /// Write the field-lineage CSV for DFlow's no-key developer endpoint.
     Lineage {
-        #[arg(long, default_value = "artifacts/analysis/quote_to_transaction_field_lineage.csv")]
+        #[arg(
+            long,
+            default_value = "artifacts/analysis/quote_to_transaction_field_lineage.csv"
+        )]
         out: PathBuf,
     },
 }
@@ -55,7 +64,10 @@ fn resolve_pair(pair: &str) -> Result<(&'static str, &'static str, u8)> {
     match pair {
         "USDC/SOL" => Ok((USDC_MINT, SOL_MINT, 6)),
         "USDC/JUP" => Ok((USDC_MINT, JUP_MINT, 6)),
-        _ => anyhow::bail!("unknown pair '{}' -- add it to resolve_pair in main.rs", pair),
+        _ => anyhow::bail!(
+            "unknown pair '{}' -- add it to resolve_pair in main.rs",
+            pair
+        ),
     }
 }
 
@@ -85,22 +97,39 @@ async fn main() -> Result<()> {
             )
             .await?;
         }
-        Commands::Decode { file } => {
+        Commands::Decode { file, rpc_url } => {
             let b64 = std::fs::read_to_string(&file)?;
-            let decoded = transaction::decode_base64_transaction(&b64)?;
-            println!("{}", serde_json::to_string_pretty(&decoded)?);
-        }
-        Commands::FetchAndDecode { signature, rpc_url } => {
-            let b64 = fetch_transaction_base64(&rpc_url, &signature).await?;
             let decoded = transaction::decode_base64_transaction(&b64)?;
 
             let mut resolved_alts = Vec::new();
             for alt_ref in &decoded.address_lookup_table_references {
-                match lookup_tables::resolve_lookup_table(
-                    &rpc_url,
-                    &alt_ref.lookup_table_account,
-                )
-                .await
+                match lookup_tables::resolve_lookup_table(&rpc_url, &alt_ref.lookup_table_account)
+                    .await
+                {
+                    Ok(addresses) => resolved_alts.push(serde_json::json!({
+                        "lookup_table_account": alt_ref.lookup_table_account,
+                        "resolved_address_count": addresses.len(),
+                        "resolved_addresses": addresses,
+                    })),
+                    Err(e) => resolved_alts.push(serde_json::json!({
+                        "lookup_table_account": alt_ref.lookup_table_account,
+                        "resolution_error": e.to_string(),
+                    })),
+                }
+            }
+
+            let mut output = serde_json::to_value(&decoded)?;
+            output["resolved_lookup_tables"] = serde_json::json!(resolved_alts);
+            println!("{}", serde_json::to_string_pretty(&output)?);
+        }
+        Commands::FetchAndDecode { signature, rpc_url } => {
+            let b64 = rpc::fetch_transaction_base64(&rpc_url, &signature).await?;
+            let decoded = transaction::decode_base64_transaction(&b64)?;
+
+            let mut resolved_alts = Vec::new();
+            for alt_ref in &decoded.address_lookup_table_references {
+                match lookup_tables::resolve_lookup_table(&rpc_url, &alt_ref.lookup_table_account)
+                    .await
                 {
                     Ok(addresses) => resolved_alts.push(serde_json::json!({
                         "lookup_table_account": alt_ref.lookup_table_account,
@@ -128,28 +157,6 @@ async fn main() -> Result<()> {
     }
 
     Ok(())
-}
-
-async fn fetch_transaction_base64(rpc_url: &str, signature_str: &str) -> Result<String> {
-    use solana_client::nonblocking::rpc_client::RpcClient;
-    use solana_client::rpc_config::RpcTransactionConfig;
-    use solana_sdk::signature::Signature;
-    use solana_transaction_status_client_types::UiTransactionEncoding;
-    use std::str::FromStr;
-
-    let client = RpcClient::new(rpc_url.to_string());
-    let sig = Signature::from_str(signature_str)?;
-    let config = RpcTransactionConfig {
-        encoding: Some(UiTransactionEncoding::Base64),
-        max_supported_transaction_version: Some(0),
-        commitment: None,
-    };
-    let tx = client.get_transaction_with_config(&sig, config).await?;
-    let encoded = tx.transaction.transaction;
-    match encoded {
-        solana_transaction_status_client_types::EncodedTransaction::Binary(data, _) => Ok(data),
-        _ => anyhow::bail!("expected base64-encoded transaction"),
-    }
 }
 
 #[cfg(test)]

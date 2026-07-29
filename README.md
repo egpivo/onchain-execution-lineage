@@ -13,13 +13,20 @@ cargo run -- quote --pair USDC/SOL --amount-usd 1000 --slippage-bps 50
 cargo run -- fetch-and-decode --signature <transaction signature>
 cargo run -- decode --file <path to base64 transaction>
 cargo run -- lineage
+
+cargo test
+cargo test --test live_network -- --ignored   # hits DFlow + mainnet RPC
 ```
 
 ## Layout
 
 ```
-src/         -- CLI, API client, capture, decode, lineage
+src/              -- CLI, API client, capture, decode, lineage
+tests/
+├── fixtures/     -- frozen inputs for tests
+├── quote_fixture.rs
+└── live_network.rs
 artifacts/
-├── captures/   -- captured quote responses
-└── analysis/   -- lineage CSV
+├── captures/     -- captured quote responses
+└── analysis/     -- lineage CSV
 ```

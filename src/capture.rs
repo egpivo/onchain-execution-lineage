@@ -54,13 +54,19 @@ pub async fn run_capture(
 
     println!("captured {} -> {}", pair_label, raw_path.display());
     println!("  requestId: {}", parsed.request_id);
-    println!("  route: {}", parsed
-        .route_plan
-        .iter()
-        .map(|leg| leg.venue.clone())
-        .collect::<Vec<_>>()
-        .join(" -> "));
-    println!("  transaction field present: {}", parsed.transaction.is_some());
+    println!(
+        "  route: {}",
+        parsed
+            .route_plan
+            .iter()
+            .map(|leg| leg.venue.clone())
+            .collect::<Vec<_>>()
+            .join(" -> ")
+    );
+    println!(
+        "  transaction field present: {}",
+        parsed.transaction.is_some()
+    );
 
     Ok(parsed_path)
 }

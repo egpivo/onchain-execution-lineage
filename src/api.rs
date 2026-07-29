@@ -38,7 +38,11 @@ pub async fn fetch_quote(req: &QuoteRequest) -> Result<(DFlowQuoteResponse, Stri
     let raw_text = resp.text().await.context("failed to read response body")?;
 
     if !status.is_success() {
-        anyhow::bail!("DFlow dev-quote-api returned non-success status {}: {}", status, raw_text);
+        anyhow::bail!(
+            "DFlow dev-quote-api returned non-success status {}: {}",
+            status,
+            raw_text
+        );
     }
 
     let mut hasher = Sha256::new();

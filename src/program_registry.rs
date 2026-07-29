@@ -9,14 +9,29 @@ use std::collections::HashMap;
 pub fn known_programs() -> HashMap<&'static str, &'static str> {
     HashMap::from([
         ("11111111111111111111111111111111", "system_program"),
-        ("ComputeBudget111111111111111111111111111111", "compute_budget"),
+        (
+            "ComputeBudget111111111111111111111111111111",
+            "compute_budget",
+        ),
         ("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA", "spl_token"),
-        ("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb", "spl_token_2022"),
-        ("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL", "associated_token_account"),
+        (
+            "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
+            "spl_token_2022",
+        ),
+        (
+            "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL",
+            "associated_token_account",
+        ),
         ("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr", "memo_v2"),
         ("Memo1UhkJRfHyvLMcVucJwxXeuD728EqVDDwQDxFMNo", "memo_v1"),
-        ("JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4", "jupiter_aggregator_v6"),
-        ("AddressLookupTab1e1111111111111111111111111", "address_lookup_table_program"),
+        (
+            "JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4",
+            "jupiter_aggregator_v6",
+        ),
+        (
+            "AddressLookupTab1e1111111111111111111111111",
+            "address_lookup_table_program",
+        ),
     ])
 }
 

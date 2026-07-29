@@ -41,7 +41,9 @@ pub struct DecodedTransaction {
 }
 
 pub fn decode_base64_transaction(b64: &str) -> Result<DecodedTransaction> {
-    let raw = STANDARD.decode(b64.trim()).context("invalid base64 transaction")?;
+    let raw = STANDARD
+        .decode(b64.trim())
+        .context("invalid base64 transaction")?;
     let vtx: VersionedTransaction =
         bincode::deserialize(&raw).context("failed to deserialize as VersionedTransaction")?;
 
@@ -81,10 +83,7 @@ pub fn decode_base64_transaction(b64: &str) -> Result<DecodedTransaction> {
             .get(program_idx)
             .cloned()
             .unwrap_or_else(|| format!("<lookup-table-index-{}>", program_idx));
-        let label = known
-            .get(program_id.as_str())
-            .copied()
-            .unwrap_or("unknown");
+        let label = known.get(program_id.as_str()).copied().unwrap_or("unknown");
         if label == "unknown" {
             unknown_programs.insert(program_id.clone());
         }
@@ -121,7 +120,11 @@ pub fn decode_base64_transaction(b64: &str) -> Result<DecodedTransaction> {
     }
 
     Ok(DecodedTransaction {
-        transaction_type: if alt_refs.is_empty() { "legacy_or_v0_no_alt".to_string() } else { "v0_with_alt".to_string() },
+        transaction_type: if alt_refs.is_empty() {
+            "legacy_or_v0_no_alt".to_string()
+        } else {
+            "v0_with_alt".to_string()
+        },
         num_signature_slots: vtx.signatures.len(),
         fee_payer,
         recent_blockhash,

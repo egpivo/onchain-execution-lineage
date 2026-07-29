@@ -80,44 +80,54 @@ pub struct CaptureMetadata {
 mod tests {
     use super::*;
 
-    // Live capture from 2026-07-29 against dev-quote-api.dflow.net.
-    // Raw body has no `transaction` key at all (quote-only surface).
-    const LIVE_QUOTE_FIXTURE: &str =
-        include_str!("../fixtures/dev_quote_usdc_sol_no_tx.json");
-
-    #[test]
-    fn live_fixture_deserializes_without_transaction_field() {
-        let raw: serde_json::Value = serde_json::from_str(LIVE_QUOTE_FIXTURE).unwrap();
-        assert!(
-            !raw.as_object().unwrap().contains_key("transaction"),
-            "fixture must preserve the live finding: no transaction key in raw JSON"
-        );
-
-        let parsed: DFlowQuoteResponse = serde_json::from_str(LIVE_QUOTE_FIXTURE).unwrap();
-        assert!(parsed.transaction.is_none());
-        assert!(parsed.platform_fee.is_none());
-        assert_eq!(parsed.request_id, "332e8a00-0a5f-4266-a139-d657227e0dbf");
-        assert_eq!(parsed.route_plan.len(), 1);
-        assert_eq!(parsed.route_plan[0].venue, "Tessera V");
-        assert_eq!(parsed.slippage_bps, 50);
-        assert!(!parsed.for_jito_bundle);
+    fn minimal_quote_json() -> serde_json::Value {
+        serde_json::json!({
+            "inputMint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+            "inAmount": "1000000000",
+            "outputMint": "So11111111111111111111111111111111111111112",
+            "outAmount": "1",
+            "otherAmountThreshold": "1",
+            "minOutAmount": "1",
+            "slippageBps": 50,
+            "platformFee": null,
+            "outTransferFee": null,
+            "priceImpactPct": "0",
+            "routePlan": [{
+                "venue": "Tessera V",
+                "marketKey": "11111111111111111111111111111111",
+                "inputMint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+                "outputMint": "So11111111111111111111111111111111111111112",
+                "inAmount": "1000000000",
+                "outAmount": "1",
+                "inputMintDecimals": 6,
+                "outputMintDecimals": 9
+            }],
+            "contextSlot": 1,
+            "requestId": "00000000-0000-0000-0000-000000000000",
+            "forJitoBundle": false
+        })
     }
 
     #[test]
     fn transaction_field_present_when_base64_string() {
-        let mut value: serde_json::Value = serde_json::from_str(LIVE_QUOTE_FIXTURE).unwrap();
+        let mut value = minimal_quote_json();
         value["transaction"] = serde_json::json!("AQAAAA...synthetic...");
         let parsed: DFlowQuoteResponse = serde_json::from_value(value).unwrap();
-        assert_eq!(
-            parsed.transaction.as_deref(),
-            Some("AQAAAA...synthetic...")
-        );
+        assert_eq!(parsed.transaction.as_deref(), Some("AQAAAA...synthetic..."));
     }
 
     #[test]
     fn transaction_null_deserializes_as_none() {
-        let mut value: serde_json::Value = serde_json::from_str(LIVE_QUOTE_FIXTURE).unwrap();
+        let mut value = minimal_quote_json();
         value["transaction"] = serde_json::Value::Null;
+        let parsed: DFlowQuoteResponse = serde_json::from_value(value).unwrap();
+        assert!(parsed.transaction.is_none());
+    }
+
+    #[test]
+    fn absent_transaction_key_deserializes_as_none() {
+        let value = minimal_quote_json();
+        assert!(!value.as_object().unwrap().contains_key("transaction"));
         let parsed: DFlowQuoteResponse = serde_json::from_value(value).unwrap();
         assert!(parsed.transaction.is_none());
     }
