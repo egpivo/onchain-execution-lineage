@@ -32,6 +32,17 @@ pub fn known_programs() -> HashMap<&'static str, &'static str> {
             "AddressLookupTab1e1111111111111111111111111",
             "address_lookup_table_program",
         ),
+        // Verified via web search 2026-07-29 against Solana Compass's
+        // program analytics page (solanacompass.com/analytics/programs/
+        // DF1ow...), which labels this "DFlow Aggregator v4". First
+        // observed as an "unknown" program in a real decoded JTX unsigned
+        // transaction (final capture phase) invoked in 2 instructions; the
+        // quote JSON's route for that same transaction named "DFlow JIT
+        // Router" as the venue -- consistent, not proof of causation.
+        (
+            "DF1ow4tspfHX9JwWJsAb9epbkA8hmpSEAtxXy1V27QBH",
+            "dflow_aggregator_v4",
+        ),
     ])
 }
 
