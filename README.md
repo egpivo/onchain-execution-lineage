@@ -1,5 +1,8 @@
 # DFlow Transaction Lineage
 
+[![Rust](https://github.com/egpivo/dflow-transaction-lineage/actions/workflows/rust.yaml/badge.svg)](https://github.com/egpivo/dflow-transaction-lineage/actions/workflows/rust.yaml)
+[![codecov](https://codecov.io/gh/egpivo/dflow-transaction-lineage/graph/badge.svg?token=URjc54t2hA)](https://codecov.io/gh/egpivo/dflow-transaction-lineage)
+
 Rust lab for tracing DFlow quote metadata into unsigned Solana transactions.
 Read-only: no signing, no submission.
 
