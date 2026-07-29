@@ -43,6 +43,27 @@ pub fn known_programs() -> HashMap<&'static str, &'static str> {
             "DF1ow4tspfHX9JwWJsAb9epbkA8hmpSEAtxXy1V27QBH",
             "dflow_aggregator_v4",
         ),
+        // CANDIDATE ONLY -- deliberately not labeled "jtx_program".
+        // Verified via read-only RPC 2026-07-29: this address is an
+        // executable program (BPFLoaderUpgradeable), and it owns account
+        // Cb1uxfFv5TG3LRtdALitazALcLMhogbcDbXcz6vTQAyN, which appears in
+        // the ATA-owner slot of a real JTX unsigned transaction. The
+        // leading "JTXJTX" is a vanity prefix chosen by whoever deployed
+        // it; no public explorer or registry labels this address, so the
+        // prefix is suggestive of the integrator's identity, NOT proof of
+        // it. Anyone can deploy a vanity address spelling anything.
+        (
+            "JTXJTXfr1wVRMEzqiPhXUr69zJtfGuLh5qEiXG772Zj",
+            "candidate_integrator_program_jtx_vanity_prefix",
+        ),
+        // Verified via read-only RPC 2026-07-29 as an executable program;
+        // loaded read-only by the DFlow instruction, making it a candidate
+        // downstream venue. Not externally labeled -- named here by address
+        // shape only, pending confirmation.
+        (
+            "BiSoNHVpsVZW2F7rx2eQ59yQwKxzU5NvBcmKshCSUypi",
+            "candidate_downstream_venue_program",
+        ),
     ])
 }
 

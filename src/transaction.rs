@@ -18,6 +18,12 @@ pub struct DecodedInstruction {
     pub data_len: usize,
     pub discriminator_hex: String,
     pub data_sha256: String,
+    /// Raw account indexes into the *full* account vector (static keys
+    /// followed by ALT-loaded addresses). Retained because a count alone
+    /// cannot tell you which accounts an instruction actually references.
+    pub account_indexes: Vec<u8>,
+    /// Raw index of this instruction's program in the full account vector.
+    pub program_id_index: u8,
 }
 
 #[derive(Debug, Serialize)]
@@ -25,6 +31,12 @@ pub struct AltReference {
     pub lookup_table_account: String,
     pub num_writable_indexes: usize,
     pub num_readonly_indexes: usize,
+    /// The actual indexes into the lookup table's own address list. Only
+    /// these entries are loaded by the transaction -- membership in the
+    /// table is not the same as being loaded, and the difference is the
+    /// whole point of resolving them.
+    pub writable_indexes: Vec<u8>,
+    pub readonly_indexes: Vec<u8>,
 }
 
 #[derive(Debug, Serialize)]
@@ -65,6 +77,8 @@ pub fn decode_base64_transaction(b64: &str) -> Result<DecodedTransaction> {
                     lookup_table_account: l.account_key.to_string(),
                     num_writable_indexes: l.writable_indexes.len(),
                     num_readonly_indexes: l.readonly_indexes.len(),
+                    writable_indexes: l.writable_indexes.clone(),
+                    readonly_indexes: l.readonly_indexes.clone(),
                 })
                 .collect()
         })
@@ -116,6 +130,8 @@ pub fn decode_base64_transaction(b64: &str) -> Result<DecodedTransaction> {
             data_len: ix.data.len(),
             discriminator_hex,
             data_sha256: data_hash,
+            account_indexes: ix.accounts.clone(),
+            program_id_index: ix.program_id_index,
         });
     }
 

@@ -3,6 +3,7 @@
 
 pub mod api;
 pub mod capture;
+pub mod instruction_map;
 pub mod lineage;
 pub mod lookup_tables;
 pub mod models;
