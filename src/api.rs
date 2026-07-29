@@ -22,10 +22,19 @@ pub struct QuoteRequest {
 /// SHA-256 hash (so the raw bytes can be verified against the parsed
 /// struct later without re-fetching).
 pub async fn fetch_quote(req: &QuoteRequest) -> Result<(DFlowQuoteResponse, String, String)> {
+    fetch_quote_at(DEV_QUOTE_ENDPOINT, req).await
+}
+
+/// Same as [`fetch_quote`], but against an arbitrary quote URL.
+/// Used by tests (mock HTTP) and by capture when pointing at a fixture server.
+pub async fn fetch_quote_at(
+    endpoint: &str,
+    req: &QuoteRequest,
+) -> Result<(DFlowQuoteResponse, String, String)> {
     let client = reqwest::Client::new();
     let url = format!(
         "{}?inputMint={}&outputMint={}&amount={}&slippageBps={}",
-        DEV_QUOTE_ENDPOINT, req.input_mint, req.output_mint, req.amount_atomic, req.slippage_bps
+        endpoint, req.input_mint, req.output_mint, req.amount_atomic, req.slippage_bps
     );
 
     let resp = client
@@ -53,4 +62,72 @@ pub async fn fetch_quote(req: &QuoteRequest) -> Result<(DFlowQuoteResponse, Stri
         serde_json::from_str(&raw_text).context("failed to deserialize DFlow quote response")?;
 
     Ok((parsed, raw_text, hash))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sha2::{Digest, Sha256};
+    use wiremock::matchers::{method, path, query_param};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    const FIXTURE: &str = include_str!("../tests/fixtures/dev_quote_usdc_sol_no_tx.json");
+
+    fn sample_req() -> QuoteRequest {
+        QuoteRequest {
+            input_mint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v".into(),
+            output_mint: "So11111111111111111111111111111111111111112".into(),
+            amount_atomic: 1_000_000_000,
+            slippage_bps: 50,
+        }
+    }
+
+    #[tokio::test]
+    async fn fetch_quote_at_parses_success_body() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/quote"))
+            .and(query_param("amount", "1000000000"))
+            .respond_with(ResponseTemplate::new(200).set_body_string(FIXTURE))
+            .mount(&server)
+            .await;
+
+        let endpoint = format!("{}/quote", server.uri());
+        let (parsed, raw, hash) = fetch_quote_at(&endpoint, &sample_req()).await.unwrap();
+
+        let mut hasher = Sha256::new();
+        hasher.update(raw.as_bytes());
+        assert_eq!(format!("{:x}", hasher.finalize()), hash);
+        assert!(parsed.transaction.is_none());
+        assert_eq!(parsed.request_id, "332e8a00-0a5f-4266-a139-d657227e0dbf");
+        assert_eq!(parsed.route_plan[0].venue, "Tessera V");
+    }
+
+    #[tokio::test]
+    async fn fetch_quote_at_rejects_non_success_status() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/quote"))
+            .respond_with(ResponseTemplate::new(503).set_body_string("unavailable"))
+            .mount(&server)
+            .await;
+
+        let endpoint = format!("{}/quote", server.uri());
+        let err = fetch_quote_at(&endpoint, &sample_req()).await.unwrap_err();
+        assert!(err.to_string().contains("non-success status"));
+    }
+
+    #[tokio::test]
+    async fn fetch_quote_at_rejects_invalid_json() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/quote"))
+            .respond_with(ResponseTemplate::new(200).set_body_string("not-json"))
+            .mount(&server)
+            .await;
+
+        let endpoint = format!("{}/quote", server.uri());
+        let err = fetch_quote_at(&endpoint, &sample_req()).await.unwrap_err();
+        assert!(err.to_string().contains("deserialize"));
+    }
 }

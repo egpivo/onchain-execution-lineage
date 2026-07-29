@@ -32,7 +32,8 @@ jobs:
 
       - name: Test with coverage
         # Offline tests only; live_network stays #[ignore].
-        run: cargo llvm-cov --lcov --output-path lcov.info
+        # main.rs is CLI glue — excluded from the reported library coverage.
+        run: cargo llvm-cov --lcov --output-path lcov.info --ignore-filename-regex 'main\.rs'
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5

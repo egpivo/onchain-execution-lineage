@@ -415,4 +415,49 @@ mod tests {
         decoded.address_lookup_table_references[1].writable_indexes = vec![99];
         assert!(build_instruction_account_map(&decoded, &tables).is_err());
     }
+
+    #[test]
+    fn rejects_missing_resolved_table() {
+        let (decoded, mut tables) = fixture();
+        tables.remove("TABLE_B");
+        assert!(build_instruction_account_map(&decoded, &tables).is_err());
+    }
+
+    #[test]
+    fn annotate_with_account_facts_sets_owner_and_missing() {
+        let (decoded, tables) = fixture();
+        let mut map = build_instruction_account_map(&decoded, &tables).unwrap();
+        let system = "11111111111111111111111111111111".to_string();
+        let facts = vec![
+            Some(crate::rpc::AccountFacts {
+                owner: system.clone(),
+                executable: false,
+            }),
+            None,
+        ];
+        // facts shorter than vector is fine for zip -- only first two annotated
+        annotate_with_account_facts(&mut map, &facts);
+        assert_eq!(
+            map.loaded_addresses[0].owner_program.as_deref(),
+            Some(system.as_str())
+        );
+        assert_eq!(
+            map.loaded_addresses[0].owner_label.as_deref(),
+            Some("system_program")
+        );
+        assert_eq!(map.loaded_addresses[0].exists_on_chain, Some(true));
+        assert_eq!(map.loaded_addresses[1].exists_on_chain, Some(false));
+    }
+
+    #[test]
+    fn owner_derived_markers_match_prefix() {
+        let (decoded, tables) = fixture();
+        let mut map = build_instruction_account_map(&decoded, &tables).unwrap();
+        map.loaded_addresses[0].owner_label = Some("candidate_integrator_program_x".into());
+        map.loaded_addresses[0].owner_program = Some("OWNER_X".into());
+        map.loaded_addresses[1].owner_label = Some("system_program".into());
+
+        let hits = owner_derived_markers(&map, "candidate_integrator_program");
+        assert_eq!(hits, vec![("PAYER".into(), "OWNER_X".into())]);
+    }
 }

@@ -16,3 +16,4 @@ comment:
 ignore:
   - "target/**"
   - "tests/live_network.rs"
+  - "src/main.rs"

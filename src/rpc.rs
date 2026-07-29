@@ -71,3 +71,108 @@ pub async fn fetch_transaction_base64(rpc_url: &str, signature_str: &str) -> Res
         _ => anyhow::bail!("expected base64-encoded transaction"),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use base64::{engine::general_purpose::STANDARD, Engine};
+    use solana_sdk::{
+        hash::Hash,
+        message::Message,
+        signature::{Keypair, Signer},
+        transaction::{Transaction, VersionedTransaction},
+    };
+    use wiremock::matchers::method;
+    use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    #[tokio::test]
+    async fn fetch_transaction_base64_rejects_bad_signature() {
+        let err = fetch_transaction_base64("http://127.0.0.1:9", "not-a-signature")
+            .await
+            .unwrap_err();
+        assert!(err.to_string().contains("invalid transaction signature"));
+    }
+
+    #[tokio::test]
+    async fn fetch_account_facts_rejects_bad_pubkey() {
+        let err = fetch_account_facts("http://127.0.0.1:9", &["nope".into()])
+            .await
+            .unwrap_err();
+        assert!(err.to_string().contains("invalid pubkey"));
+    }
+
+    #[tokio::test]
+    async fn fetch_transaction_base64_reads_binary_encoding() {
+        #[allow(deprecated)]
+        let b64 = {
+            use solana_sdk::system_instruction;
+            let from = Keypair::new();
+            let to = Keypair::new();
+            let ix = system_instruction::transfer(&from.pubkey(), &to.pubkey(), 1);
+            let message = Message::new(&[ix], Some(&from.pubkey()));
+            let mut tx = Transaction::new_unsigned(message);
+            tx.message.recent_blockhash = Hash::new_unique();
+            let vtx = VersionedTransaction::from(tx);
+            STANDARD.encode(bincode::serialize(&vtx).unwrap())
+        };
+
+        let server = MockServer::start().await;
+        let body = serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": 1,
+            "result": {
+                "slot": 1,
+                "transaction": [b64, "base64"],
+                "meta": null,
+                "version": "legacy",
+                "blockTime": null
+            }
+        });
+        Mock::given(method("POST"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(body))
+            .mount(&server)
+            .await;
+
+        // Any syntactically valid signature string is fine; the mock ignores it.
+        let sig = "1111111111111111111111111111111111111111111111111111111111111111";
+        let got = fetch_transaction_base64(&server.uri(), sig).await.unwrap();
+        assert!(!got.is_empty());
+        assert!(crate::transaction::decode_base64_transaction(&got).is_ok());
+    }
+
+    #[tokio::test]
+    async fn fetch_account_facts_maps_present_and_missing() {
+        let server = MockServer::start().await;
+        let system = "11111111111111111111111111111111";
+        let body = serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": 1,
+            "result": {
+                "context": { "slot": 1 },
+                "value": [
+                    {
+                        "data": ["", "base64"],
+                        "executable": false,
+                        "lamports": 1,
+                        "owner": system,
+                        "rentEpoch": 0,
+                        "space": 0
+                    },
+                    null
+                ]
+            }
+        });
+        Mock::given(method("POST"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(body))
+            .mount(&server)
+            .await;
+
+        let a = Keypair::new().pubkey().to_string();
+        let b = Keypair::new().pubkey().to_string();
+        let facts = fetch_account_facts(&server.uri(), &[a, b]).await.unwrap();
+        assert_eq!(facts.len(), 2);
+        assert_eq!(facts[0].as_ref().unwrap().owner, system);
+        assert!(!facts[0].as_ref().unwrap().executable);
+        assert!(facts[1].is_none());
+    }
+}

@@ -218,4 +218,33 @@ mod tests {
         assert_eq!(decoded.candidate_jito_tip_transfers, vec![0]);
         assert_eq!(decoded.instructions[0].program_label, "system_program");
     }
+
+    #[test]
+    fn records_unknown_program_ids() {
+        use solana_sdk::{
+            instruction::{AccountMeta, Instruction},
+            message::Message,
+        };
+
+        let payer = Keypair::new();
+        let unknown_program = Keypair::new();
+        let ix = Instruction {
+            program_id: unknown_program.pubkey(),
+            accounts: vec![AccountMeta::new(payer.pubkey(), true)],
+            data: vec![0xaa, 0xbb, 0xcc, 0xdd],
+        };
+        let message = Message::new(&[ix], Some(&payer.pubkey()));
+        let mut tx = Transaction::new_unsigned(message);
+        tx.message.recent_blockhash = Hash::new_unique();
+        let vtx = VersionedTransaction::from(tx);
+        let b64 = STANDARD.encode(bincode::serialize(&vtx).unwrap());
+
+        let decoded = decode_base64_transaction(&b64).unwrap();
+        assert_eq!(
+            decoded.unknown_program_ids,
+            vec![unknown_program.pubkey().to_string()]
+        );
+        assert_eq!(decoded.instructions[0].program_label, "unknown");
+        assert_eq!(decoded.instructions[0].discriminator_hex, "aabbccdd");
+    }
 }

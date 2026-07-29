@@ -1,6 +1,6 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use dflow_lineage::{capture, instruction_map, lineage, lookup_tables, rpc, transaction};
+use dflow_lineage::{capture, instruction_map, lineage, lookup_tables, pairs, rpc, transaction};
 use std::path::PathBuf;
 
 fn join_indexes(v: &[usize]) -> String {
@@ -9,13 +9,6 @@ fn join_indexes(v: &[usize]) -> String {
         .collect::<Vec<_>>()
         .join(" ")
 }
-
-/// Known mints, spot-checked against this project's existing verified
-/// allowlist (Sunday project quote-economics work) -- not re-verified
-/// here, reused.
-const USDC_MINT: &str = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
-const SOL_MINT: &str = "So11111111111111111111111111111111111111112";
-const JUP_MINT: &str = "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN";
 
 #[derive(Parser)]
 #[command(name = "dflow-lineage")]
@@ -80,17 +73,6 @@ enum Commands {
     },
 }
 
-fn resolve_pair(pair: &str) -> Result<(&'static str, &'static str, u8)> {
-    match pair {
-        "USDC/SOL" => Ok((USDC_MINT, SOL_MINT, 6)),
-        "USDC/JUP" => Ok((USDC_MINT, JUP_MINT, 6)),
-        _ => anyhow::bail!(
-            "unknown pair '{}' -- add it to resolve_pair in main.rs",
-            pair
-        ),
-    }
-}
-
 #[tokio::main]
 async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
@@ -102,7 +84,7 @@ async fn main() -> Result<()> {
             amount_usd,
             slippage_bps,
         } => {
-            let (input_mint, output_mint, input_decimals) = resolve_pair(&pair)?;
+            let (input_mint, output_mint, input_decimals) = pairs::resolve_pair(&pair)?;
             let amount_atomic = (amount_usd * 10f64.powi(input_decimals as i32)) as u64;
             let out_dir = PathBuf::from("artifacts/captures");
             let pair_label = pair.replace('/', "_");
@@ -335,27 +317,4 @@ async fn main() -> Result<()> {
     }
 
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::resolve_pair;
-
-    #[test]
-    fn resolve_pair_known_pairs() {
-        let (input, output, decimals) = resolve_pair("USDC/SOL").unwrap();
-        assert_eq!(input, super::USDC_MINT);
-        assert_eq!(output, super::SOL_MINT);
-        assert_eq!(decimals, 6);
-
-        let (input, output, decimals) = resolve_pair("USDC/JUP").unwrap();
-        assert_eq!(input, super::USDC_MINT);
-        assert_eq!(output, super::JUP_MINT);
-        assert_eq!(decimals, 6);
-    }
-
-    #[test]
-    fn resolve_pair_rejects_unknown() {
-        assert!(resolve_pair("SOL/USDC").is_err());
-    }
 }

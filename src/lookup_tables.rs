@@ -27,3 +27,16 @@ pub async fn resolve_lookup_table(
 
     Ok(table.addresses.iter().map(|p| p.to_string()).collect())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn rejects_invalid_lookup_table_pubkey() {
+        let err = resolve_lookup_table("http://127.0.0.1:9", "not-a-pubkey")
+            .await
+            .unwrap_err();
+        assert!(err.to_string().contains("invalid lookup table pubkey"));
+    }
+}

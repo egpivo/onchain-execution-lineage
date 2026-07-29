@@ -33,3 +33,6 @@ solana-client = "2.3"
 solana-transaction-status-client-types = "2.3"
 solana-address-lookup-table-interface = "2.2"
 bincode = "1"
+
+[dev-dependencies]
+wiremock = "0.6"

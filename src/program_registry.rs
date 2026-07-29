@@ -116,6 +116,10 @@ mod tests {
             known.get("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"),
             Some(&"associated_token_account")
         );
+        assert_eq!(
+            known.get("DF1ow4tspfHX9JwWJsAb9epbkA8hmpSEAtxXy1V27QBH"),
+            Some(&"dflow_aggregator_v4")
+        );
     }
 
     #[test]
