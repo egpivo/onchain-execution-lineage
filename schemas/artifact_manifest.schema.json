@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/egpivo/dflow-transaction-lineage/schemas/artifact_manifest.schema.json",
+  "title": "ArtifactManifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "artifact_id",
+    "capture_run_id",
+    "provider",
+    "surface",
+    "endpoint_type",
+    "endpoint_hostname",
+    "authentication_mode",
+    "captured_at_utc",
+    "pair",
+    "input_mint",
+    "output_mint",
+    "raw_input_amount",
+    "slippage_configuration",
+    "raw_artifact_path",
+    "raw_artifact_sha256",
+    "sanitized_artifact_path",
+    "sanitization_status",
+    "transaction_presence",
+    "source_notes"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "artifact_id": { "type": "string", "minLength": 1 },
+    "capture_run_id": { "type": "string", "minLength": 1 },
+    "matched_set_id": { "type": ["string", "null"] },
+    "provider": { "type": "string" },
+    "surface": { "type": "string" },
+    "endpoint_type": {
+      "type": "string",
+      "enum": ["developer", "production", "app", "rpc"]
+    },
+    "endpoint_hostname": { "type": "string" },
+    "authentication_mode": { "type": "string" },
+    "captured_at_utc": { "type": "string" },
+    "pair": { "type": "string" },
+    "input_mint": { "type": "string" },
+    "output_mint": { "type": "string" },
+    "raw_input_amount": { "type": "string" },
+    "slippage_configuration": { "type": "string" },
+    "raw_artifact_path": { "type": "string" },
+    "raw_artifact_sha256": {
+      "type": "string",
+      "pattern": "^[a-fA-F0-9]{64}$"
+    },
+    "sanitized_artifact_path": { "type": "string" },
+    "sanitization_status": {
+      "type": "string",
+      "enum": ["not_required", "sanitized", "pending_review"]
+    },
+    "transaction_presence": {
+      "type": "string",
+      "enum": [
+        "absent",
+        "present_null",
+        "present_base64",
+        "settled_signature_only"
+      ]
+    },
+    "signature": { "type": ["string", "null"] },
+    "source_notes": { "type": "string" }
+  }
+}

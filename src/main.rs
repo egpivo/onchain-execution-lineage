@@ -1,6 +1,9 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use dflow_lineage::{capture, instruction_map, lineage, lookup_tables, pairs, rpc, transaction};
+use dflow_lineage::{
+    artifact, capture, diff, fingerprint, instruction_map, lineage, lookup_tables, pairs, report,
+    rpc, trace, transaction,
+};
 use std::path::PathBuf;
 
 fn join_indexes(v: &[usize]) -> String {
@@ -12,7 +15,9 @@ fn join_indexes(v: &[usize]) -> String {
 
 #[derive(Parser)]
 #[command(name = "dflow-lineage")]
-#[command(about = "Trace DFlow quote metadata into unsigned Solana transactions")]
+#[command(
+    about = "Read-only Solana execution mechanism and transaction-lineage experiments in Rust"
+)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -30,29 +35,20 @@ enum Commands {
         slippage_bps: u32,
     },
     /// Decode a base64 transaction (from a file) and print the JSON result.
-    /// Also resolves any referenced Address Lookup Tables via read-only RPC
-    /// -- an unsigned transaction's ALTs are still real, already-created
-    /// on-chain accounts, so this works even though the transaction itself
-    /// was never submitted.
     Decode {
         #[arg(long)]
         file: PathBuf,
         #[arg(long, default_value = "https://api.mainnet-beta.solana.com")]
         rpc_url: String,
     },
-    /// Fetch a real, already-settled transaction by signature via public
-    /// RPC (read-only) and decode it -- used to verify the decoder against
-    /// real mainnet data, since DFlow's dev-quote-api does not return a
-    /// transaction to decode.
+    /// Fetch a settled transaction by signature via public RPC and decode it.
     FetchAndDecode {
         #[arg(long)]
         signature: String,
         #[arg(long, default_value = "https://api.mainnet-beta.solana.com")]
         rpc_url: String,
     },
-    /// Decode a base64 transaction, resolve its lookup tables, and map every
-    /// compiled instruction onto the addresses it actually loads. Writes a
-    /// loaded-address CSV and an instruction/account markdown map.
+    /// Decode a base64 transaction, resolve ALTs, map instructions → CSV + Markdown.
     Map {
         #[arg(long)]
         file: PathBuf,
@@ -63,12 +59,61 @@ enum Commands {
         #[arg(long, default_value = "artifacts/analysis/instruction_account_map.md")]
         out_md: PathBuf,
     },
-    /// Write the field-lineage CSV for DFlow's no-key developer endpoint.
+    /// Deprecated: writes the static DFlow-dev field-lineage CSV.
+    /// Prefer `trace` for provider-normalized LineageBundle output.
+    #[command(hide = false)]
     Lineage {
         #[arg(
             long,
             default_value = "artifacts/analysis/quote_to_transaction_field_lineage.csv"
         )]
+        out: PathBuf,
+    },
+    /// Build a LineageBundle from manifest / provider JSON / tx / signature.
+    Trace {
+        #[arg(long)]
+        manifest: Option<PathBuf>,
+        #[arg(long)]
+        provider_json: Option<PathBuf>,
+        #[arg(long)]
+        transaction: Option<PathBuf>,
+        #[arg(long)]
+        signature: Option<String>,
+        #[arg(long, default_value = "https://api.mainnet-beta.solana.com")]
+        rpc_url: String,
+        #[arg(long, default_value_t = false)]
+        resolve_alts: bool,
+        #[arg(long, default_value_t = false)]
+        enrich_settlement: bool,
+        #[arg(long, default_value = "artifacts/analysis/lineage_bundle.json")]
+        out_json: PathBuf,
+        #[arg(long, default_value = "artifacts/analysis/lineage_report.md")]
+        out_md: PathBuf,
+        #[arg(long, default_value = "artifacts/analysis/lineage_evidence.csv")]
+        out_csv: PathBuf,
+        #[arg(long, default_value = "artifacts/analysis/lineage.dot")]
+        out_dot: PathBuf,
+    },
+    /// Diff two LineageBundle JSON files.
+    Diff {
+        #[arg(long)]
+        left: PathBuf,
+        #[arg(long)]
+        right: PathBuf,
+        #[arg(long, default_value = "artifacts/analysis/lineage_diff.json")]
+        out_json: PathBuf,
+        #[arg(long, default_value = "artifacts/analysis/lineage_diff.md")]
+        out_md: PathBuf,
+    },
+    /// Fingerprint a corpus group (refuses n=1 promotion).
+    Fingerprint {
+        #[arg(long, default_value = ".local/corpus/corpus_manifest.json")]
+        corpus: PathBuf,
+        #[arg(long)]
+        group: String,
+        #[arg(long, default_value = ".")]
+        base_dir: PathBuf,
+        #[arg(long, default_value = "artifacts/analysis/fingerprint_report.json")]
         out: PathBuf,
     },
 }
@@ -264,55 +309,97 @@ async fn main() -> Result<()> {
 
             println!("wrote {}", out_csv.display());
             println!("wrote {}", out_md.display());
-
-            let dflow_ix = map
-                .instructions
-                .iter()
-                .filter(|i| i.program_label == "dflow_aggregator_v4")
-                .count();
-            // An integrator program can own an account in the vector without
-            // appearing in it, so check both the address and its owner.
-            let direct_markers = map
-                .loaded_addresses
-                .iter()
-                .filter(|a| a.label.starts_with("candidate_integrator_program"))
-                .count();
-            let owner_markers =
-                instruction_map::owner_derived_markers(&map, "candidate_integrator_program");
-            let candidate_markers = direct_markers + owner_markers.len();
-            let venue_candidates = map
-                .loaded_addresses
-                .iter()
-                .filter(|a| a.label == "candidate_downstream_venue_program")
-                .count();
-
-            println!("---");
-            println!("transaction_type:           {}", decoded.transaction_type);
-            println!(
-                "lookup_tables:              {}",
-                decoded.address_lookup_table_references.len()
-            );
-            println!("compiled_instructions:      {}", map.instructions.len());
-            println!("dflow_program_instructions: {dflow_ix}");
-            println!(
-                "addresses_in_tables:        {}",
-                map.total_addresses_in_referenced_tables
-            );
-            println!("addresses_actually_loaded:  {}", map.total_loaded_from_alts);
-            println!("candidate_integrator_marks: {candidate_markers}");
-            println!("candidate_venue_programs:   {venue_candidates}");
-            println!(
-                "jito_tip_matches:           {}",
-                decoded.candidate_jito_tip_transfers.len()
-            );
-            println!("settlement:                 not submitted");
         }
         Commands::Lineage { out } => {
+            eprintln!(
+                "warning: `lineage` is deprecated; use `trace` for LineageBundle JSON/Markdown/CSV/DOT. \
+                 This command still writes the static DFlow-dev field CSV for compatibility."
+            );
             if let Some(parent) = out.parent() {
                 std::fs::create_dir_all(parent)?;
             }
             lineage::write_dev_endpoint_lineage(&out)?;
             println!("wrote {}", out.display());
+        }
+        Commands::Trace {
+            manifest,
+            provider_json,
+            transaction,
+            signature,
+            rpc_url,
+            resolve_alts,
+            enrich_settlement,
+            out_json,
+            out_md,
+            out_csv,
+            out_dot,
+        } => {
+            let loaded_manifest = match &manifest {
+                Some(p) => Some(artifact::ArtifactManifest::load_path(p)?),
+                None => None,
+            };
+            let bundle = trace::build_trace(trace::TraceInputs {
+                manifest: loaded_manifest.as_ref(),
+                provider_json_path: provider_json.as_deref(),
+                transaction_b64_path: transaction.as_deref(),
+                signature: signature.as_deref(),
+                rpc_url: &rpc_url,
+                resolve_alts,
+                enrich_settlement,
+            })
+            .await?;
+
+            for path in [&out_json, &out_md, &out_csv, &out_dot] {
+                if let Some(parent) = path.parent() {
+                    std::fs::create_dir_all(parent)?;
+                }
+            }
+            std::fs::write(&out_json, bundle.to_canonical_json()?)?;
+            report::write_markdown_report(&bundle, &out_md)?;
+            report::write_evidence_csv(&bundle, &out_csv)?;
+            report::write_dot(&bundle, &out_dot)?;
+            println!("wrote {}", out_json.display());
+            println!("wrote {}", out_md.display());
+            println!("wrote {}", out_csv.display());
+            println!("wrote {}", out_dot.display());
+        }
+        Commands::Diff {
+            left,
+            right,
+            out_json,
+            out_md,
+        } => {
+            let left_b: dflow_lineage::lineage_model::LineageBundle =
+                serde_json::from_str(&std::fs::read_to_string(&left)?)?;
+            let right_b: dflow_lineage::lineage_model::LineageBundle =
+                serde_json::from_str(&std::fs::read_to_string(&right)?)?;
+            let d = diff::diff_bundles(&left_b, &right_b);
+            for path in [&out_json, &out_md] {
+                if let Some(parent) = path.parent() {
+                    std::fs::create_dir_all(parent)?;
+                }
+            }
+            std::fs::write(&out_json, serde_json::to_string_pretty(&d)?)?;
+            report::write_diff_markdown(&d, &out_md)?;
+            println!("wrote {}", out_json.display());
+            println!("wrote {}", out_md.display());
+        }
+        Commands::Fingerprint {
+            corpus,
+            group,
+            base_dir,
+            out,
+        } => {
+            let c = fingerprint::load_corpus(&corpus)?;
+            let report = fingerprint::fingerprint_group(&c, &base_dir, &group)?;
+            if let Some(parent) = out.parent() {
+                std::fs::create_dir_all(parent)?;
+            }
+            std::fs::write(&out, serde_json::to_string_pretty(&report)?)?;
+            println!("wrote {}", out.display());
+            if report.insufficient_sample {
+                println!("insufficient_sample=true (n=1 promotion refused)");
+            }
         }
     }
 

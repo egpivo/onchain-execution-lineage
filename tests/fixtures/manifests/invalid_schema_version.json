@@ -1,0 +1,22 @@
+{
+  "schema_version": "9.9.9",
+  "artifact_id": "invalid_schema_version",
+  "capture_run_id": "test",
+  "provider": "dflow",
+  "surface": "dev_quote",
+  "endpoint_type": "developer",
+  "endpoint_hostname": "example.invalid",
+  "authentication_mode": "none",
+  "captured_at_utc": "2026-07-29T00:00:00Z",
+  "pair": "USDC/SOL",
+  "input_mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+  "output_mint": "So11111111111111111111111111111111111111112",
+  "raw_input_amount": "1",
+  "slippage_configuration": "50_bps",
+  "raw_artifact_path": "x.json",
+  "raw_artifact_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "sanitized_artifact_path": "x.json",
+  "sanitization_status": "not_required",
+  "transaction_presence": "absent",
+  "source_notes": "deliberately unsupported schema_version for negative tests"
+}

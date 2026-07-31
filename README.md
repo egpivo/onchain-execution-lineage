@@ -3,33 +3,93 @@
 [![Rust](https://github.com/egpivo/dflow-transaction-lineage/actions/workflows/rust.yaml/badge.svg)](https://github.com/egpivo/dflow-transaction-lineage/actions/workflows/rust.yaml)
 [![codecov](https://codecov.io/gh/egpivo/onchain-execution-lineage/graph/badge.svg?token=URjc54t2hA)](https://codecov.io/gh/egpivo/onchain-execution-lineage)
 
-Rust lab for tracing DFlow quote metadata into unsigned Solana transactions.
-Read-only: no signing, no submission.
+**What survives from an execution interface into a Solana transaction?**
 
-Uses DFlow's public no-key developer quote endpoint (`dev-quote-api.dflow.net`)
-via a local `reqwest` client — not an official SDK.
+Read-only Solana execution provenance and transaction diffing in Rust.
 
-## Usage
+No signing. No submission. No wallet keys.
 
-```bash
-cargo run -- quote --pair USDC/SOL --amount-usd 1000 --slippage-bps 50
-cargo run -- fetch-and-decode --signature <transaction signature>
-cargo run -- decode --file <path to base64 transaction>
-cargo run -- lineage
+## Evidence stages
 
-cargo test
-cargo test --test live_network -- --ignored   # hits DFlow + mainnet RPC
+```text
+UI / app claim
+    → provider JSON (quote/order)
+        → unsigned VersionedTransaction (if present)
+            → loaded accounts / programs (decode + ALT resolve)
+                → settlement (only with a signature)
 ```
+
+Each attribution carries an explicit evidence level
+(`direct_observation`, `decoded_from_transaction`, `resolved_from_rpc`,
+`external_program_label`, `cross_artifact_inference`, `candidate`,
+`unresolved`). There is no scalar confidence score.
 
 ## Layout
 
+```text
+src/           library + CLI
+tests/         unit/integration tests and public fixtures
+schemas/       machine-readable contracts (not prose docs)
+artifacts/     runtime outputs (captures, analysis)
+.local/        private only (gitignored): docs, research corpus
 ```
-src/              -- CLI, API client, capture, decode, lineage
-tests/
-├── fixtures/     -- frozen inputs for tests
-├── quote_fixture.rs
-└── live_network.rs
-artifacts/
-├── captures/     -- captured quote responses
-└── analysis/     -- lineage CSV
+
+## Quick start
+
+```bash
+cargo test
+cargo run -- lineage
+cargo run -- quote --pair USDC/SOL --amount-usd 1000 --slippage-bps 50
+```
+
+## Trace / diff (public smoke fixture)
+
+```bash
+cargo run -- trace \
+  --manifest tests/fixtures/manifests/valid_dflow_dev.json \
+  --provider-json tests/fixtures/dev_quote_usdc_sol_no_tx.json \
+  --out-json artifacts/analysis/dflow_dev_lineage.json
+```
+
+Private research captures and fingerprint corpora live under `.local/corpus/`
+(not published). Docs / ADR / changelog also live under `.local/docs/`.
+
+## Evidence levels
+
+| Level | Meaning |
+|---|---|
+| `direct_observation` | Present in a captured JSON/UI artifact |
+| `decoded_from_transaction` | Present in decoded transaction bytes |
+| `resolved_from_rpc` | Filled via read-only RPC |
+| `external_program_label` | Known program ID from the verified registry |
+| `cross_artifact_inference` | Joined across artifacts with stated caveats |
+| `candidate` | Suggestive; needs repetition + negative controls |
+| `unresolved` | Not observable with current evidence |
+
+## Commands
+
+| Command | Role |
+|---|---|
+| `quote` | Live DFlow-dev `/quote` capture |
+| `decode` / `fetch-and-decode` / `map` | Transaction decode + ALT map |
+| `lineage` | Static DFlow-dev field-lineage CSV |
+| `trace` | Build `LineageBundle` + Markdown/CSV/DOT |
+| `diff` | Compare two bundles |
+| `fingerprint` | Corpus group report (refuses n&lt;2 promotion) |
+
+## Limits
+
+- Not a trading bot, wallet, block explorer, or DFlow SDK.
+- DFlow program IDs are provider-generic, not JTX-specific.
+- Priority fees ≠ Jito delivery proof.
+- Unsigned instructions are never described as executed.
+- Cross-Surface economic panel stays in Python; this repo is provenance-only.
+
+## Reproducibility
+
+```bash
+cargo fmt --check
+cargo clippy --all-targets -- -D warnings
+cargo test --all
+cargo test --test live_network -- --ignored   # optional network
 ```
