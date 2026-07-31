@@ -13,9 +13,16 @@ impl ProviderAdapter for DflowAdapter {
     }
 
     fn detect(&self, value: &Value) -> bool {
-        // Developer quote/order style: routePlan array + requestId, or explicit
-        // contextSlot from DFlow quote surfaces.
-        value.get("routePlan").is_some() && value.get("requestId").is_some()
+        // Developer /quote often has routePlan + requestId.
+        // Developer /order has routePlan + executionMode and/or transaction,
+        // and may omit requestId.
+        let has_route = value.get("routePlan").is_some();
+        let quote_shaped = value.get("requestId").is_some();
+        let order_shaped = value.get("executionMode").is_some()
+            || value.get("lastValidBlockHeight").is_some()
+            || (value.get("transaction").and_then(|t| t.as_str()).is_some()
+                && value.get("outAmount").is_some());
+        has_route && (quote_shaped || order_shaped)
     }
 
     fn normalize(&self, value: &Value, bundle: &mut LineageBundle) -> Result<()> {
@@ -98,7 +105,18 @@ impl ProviderAdapter for DflowAdapter {
             "requestId",
             "forJitoBundle",
             "transaction",
+            "executionMode",
+            "lastValidBlockHeight",
+            "computeUnitLimit",
+            "prioritizationFeeLamports",
+            "prioritizationType",
+            "revertMint",
         ];
+        if let Some(mode) = take_string(value, "executionMode") {
+            bundle
+                .raw_extensions
+                .insert("execution_mode".into(), serde_json::json!(mode));
+        }
         let ext = collect_unknown(&obj, &known);
         if !ext.as_object().map(|m| m.is_empty()).unwrap_or(true) {
             bundle.raw_extensions.insert("dflow".into(), ext);

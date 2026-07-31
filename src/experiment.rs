@@ -19,6 +19,11 @@ use crate::lineage_model::{CaptureMetadata, LineageBundle};
 use crate::pairs;
 use crate::providers;
 use crate::transaction;
+use crate::tx_compare::{
+    diff_canonical_transactions, diff_raw_transactions, observe_raw_transaction,
+    search_candidate_le_threshold_encoding, CandidateEncodingHit, CanonicalTransactionDiff,
+    RawTransactionDiff, RawTransactionObservation,
+};
 
 pub const EXPERIMENT_SCHEMA_VERSION: &str = "1.0.0";
 const MAX_REQUESTS_HARD_CAP: usize = 16;
@@ -67,7 +72,20 @@ pub struct ExperimentManifest {
     pub fixture_dir: Option<String>,
     #[serde(default)]
     pub endpoint_hostname: Option<String>,
+    /// Developer Trade API path: `quote` (default) or `order`.
+    #[serde(default = "default_endpoint_path")]
+    pub endpoint_path: String,
+    /// Public address only. Never a private key.
+    #[serde(default)]
+    pub user_public_key: Option<String>,
+    /// Optional env var name holding a user-controlled public address.
+    #[serde(default)]
+    pub user_public_key_env: Option<String>,
     pub notes: String,
+}
+
+fn default_endpoint_path() -> String {
+    "quote".into()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -95,6 +113,24 @@ pub struct TreatmentRun {
     pub transaction_byte_length: Option<usize>,
     /// `"quote-stage only"` when unsigned transaction bytes are absent.
     pub transaction_presence_note: String,
+    #[serde(default)]
+    pub request_timestamp_utc: Option<String>,
+    #[serde(default)]
+    pub http_status: Option<u16>,
+    #[serde(default)]
+    pub construction_status: String,
+    #[serde(default)]
+    pub execution_mode: Option<String>,
+    #[serde(default)]
+    pub last_valid_block_height: Option<u64>,
+    #[serde(default)]
+    pub compute_unit_limit: Option<u64>,
+    #[serde(default)]
+    pub prioritization_fee_lamports: Option<u64>,
+    #[serde(default)]
+    pub transaction_b64_path: Option<String>,
+    #[serde(default)]
+    pub raw_transaction: Option<RawTransactionObservation>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -112,8 +148,15 @@ pub struct ExperimentReport {
     pub experiment_id: String,
     pub treatment_variable: TreatmentVariable,
     pub baseline_value: String,
+    pub endpoint_path: String,
     pub runs: Vec<TreatmentRun>,
     pub diffs_vs_baseline: BTreeMap<String, LineageDiff>,
+    #[serde(default)]
+    pub raw_tx_diffs_vs_baseline: BTreeMap<String, RawTransactionDiff>,
+    #[serde(default)]
+    pub canonical_tx_diffs_vs_baseline: BTreeMap<String, CanonicalTransactionDiff>,
+    #[serde(default)]
+    pub candidate_threshold_encodings: Vec<CandidateEncodingHit>,
     pub mechanism: MechanismBuckets,
     pub notes: String,
 }
@@ -179,6 +222,18 @@ impl ExperimentManifest {
                 bail!("unsafe endpoint_hostname '{host}'");
             }
         }
+        if self.endpoint_path != "quote" && self.endpoint_path != "order" {
+            bail!(
+                "unsupported endpoint_path '{}' (allowed: quote, order)",
+                self.endpoint_path
+            );
+        }
+        if self.endpoint_path == "order" && matches!(self.mode, ExperimentMode::Live) {
+            // Resolved at runtime from field or env; ensure at least one is declared.
+            if self.user_public_key.is_none() && self.user_public_key_env.is_none() {
+                bail!("order experiments require user_public_key or user_public_key_env");
+            }
+        }
         let blob = serde_json::to_string(self)?;
         for needle in [
             "authorization:",
@@ -186,6 +241,7 @@ impl ExperimentManifest {
             "cookie:",
             "private_key",
             "api_key=",
+            "secret_key",
         ] {
             if blob.to_lowercase().contains(needle) {
                 bail!("manifest appears to contain secret material ({needle})");
@@ -193,53 +249,148 @@ impl ExperimentManifest {
         }
         Ok(())
     }
+
+    pub fn resolve_user_public_key(&self) -> Result<Option<String>> {
+        if let Some(env_name) = &self.user_public_key_env {
+            if let Ok(v) = std::env::var(env_name) {
+                let v = v.trim().to_string();
+                if !v.is_empty() {
+                    return Ok(Some(v));
+                }
+            }
+        }
+        Ok(self.user_public_key.clone())
+    }
+}
+
+struct LiveFetch {
+    request_timestamp_utc: String,
+    response_timestamp_utc: String,
+    http_status: u16,
+    body: String,
 }
 
 pub async fn run_experiment(manifest_path: &Path, base_dir: &Path) -> Result<ExperimentReport> {
+    run_experiment_with_rpc(
+        manifest_path,
+        base_dir,
+        "https://api.mainnet-beta.solana.com",
+        true,
+    )
+    .await
+}
+
+pub async fn run_experiment_with_rpc(
+    manifest_path: &Path,
+    base_dir: &Path,
+    rpc_url: &str,
+    resolve_alts: bool,
+) -> Result<ExperimentReport> {
     let manifest = ExperimentManifest::load_path(manifest_path)?;
     let out_dir = resolve_against(base_dir, &manifest.output_path);
     fs::create_dir_all(&out_dir)?;
     fs::create_dir_all(out_dir.join("raw"))?;
     fs::create_dir_all(out_dir.join("lineage"))?;
+    fs::create_dir_all(out_dir.join("tx"))?;
+    fs::create_dir_all(out_dir.join("meta"))?;
 
     let (input_mint, output_mint, _) = pairs::resolve_pair(&manifest.pair)?;
+    let user_pubkey = manifest.resolve_user_public_key()?;
     let mut runs = Vec::new();
     let mut bundles: BTreeMap<String, LineageBundle> = BTreeMap::new();
+    let mut tx_b64_by_key: BTreeMap<String, String> = BTreeMap::new();
 
     for value in &manifest.treatment_values {
         let key = value_key(value);
-        let raw_text = load_or_fetch_response(&manifest, base_dir, value, input_mint, output_mint)
-            .await
-            .with_context(|| format!("treatment value {key}"))?;
+        let fetch = load_or_fetch_response(
+            &manifest,
+            base_dir,
+            value,
+            input_mint,
+            output_mint,
+            user_pubkey.as_deref(),
+        )
+        .await
+        .with_context(|| format!("treatment value {key}"))?;
 
         let raw_path = out_dir.join("raw").join(format!("{key}.json"));
-        fs::write(&raw_path, &raw_text)?;
-        let hash = sha256_bytes(raw_text.as_bytes());
+        fs::write(&raw_path, &fetch.body)?;
+        let hash = sha256_bytes(fetch.body.as_bytes());
 
-        let json: Value = serde_json::from_str(&raw_text)
-            .with_context(|| format!("treatment {key} response is not JSON"))?;
+        let meta = json!({
+            "request_timestamp_utc": fetch.request_timestamp_utc,
+            "response_timestamp_utc": fetch.response_timestamp_utc,
+            "http_status": fetch.http_status,
+            "endpoint_path": manifest.endpoint_path,
+            "user_public_key_present": user_pubkey.is_some(),
+        });
+        fs::write(
+            out_dir.join("meta").join(format!("{key}.json")),
+            serde_json::to_string_pretty(&meta)?,
+        )?;
 
-        let captured_at = chrono::Utc::now().to_rfc3339();
+        let json: Value = serde_json::from_str(&fetch.body).unwrap_or_else(|_| {
+            json!({
+                "msg": fetch.body,
+                "parse_error": true,
+            })
+        });
+
+        let construction_blocked = !(200..300).contains(&fetch.http_status)
+            || (json.get("code").is_some()
+                && json.get("transaction").is_none()
+                && json.get("outAmount").is_none());
+
         let mut bundle = LineageBundle::new(CaptureMetadata {
             artifact_id: format!("{}_{key}", manifest.experiment_id),
             provider: manifest.provider.clone(),
-            surface: format!("experiment:{}", manifest.experiment_id),
-            captured_at_utc: captured_at.clone(),
+            surface: format!(
+                "experiment:{}:{}",
+                manifest.experiment_id, manifest.endpoint_path
+            ),
+            captured_at_utc: fetch.response_timestamp_utc.clone(),
             pair: manifest.pair.clone(),
         });
-        providers::normalize_provider_json(&json, &mut bundle)?;
 
         let mut tx_len = None;
-        if let Some(b64) = json.get("transaction").and_then(|t| t.as_str()) {
-            if let Ok(decoded) = transaction::decode_base64_transaction(b64) {
-                apply_tx_fields(&mut bundle, &decoded, b64.len());
-                tx_len = Some(b64.len());
-            } else {
-                bundle.push_unresolved(
-                    "transaction",
-                    "transaction field present but failed to decode",
-                );
+        let mut tx_b64_path = None;
+        let mut raw_tx_obs = None;
+        let mut construction_status = if construction_blocked {
+            "construction_blocked".to_string()
+        } else {
+            "ok".to_string()
+        };
+
+        if !construction_blocked {
+            let _ = providers::normalize_provider_json(&json, &mut bundle);
+            if let Some(b64) = json.get("transaction").and_then(|t| t.as_str()) {
+                let tx_path = out_dir.join("tx").join(format!("{key}.b64"));
+                fs::write(&tx_path, b64)?;
+                tx_b64_path = Some(relativize(base_dir, &tx_path));
+                tx_b64_by_key.insert(key.clone(), b64.to_string());
+                match transaction::decode_base64_transaction(b64) {
+                    Ok(decoded) => {
+                        apply_tx_fields(&mut bundle, &decoded, b64.len());
+                        tx_len = Some(b64.len());
+                        raw_tx_obs = observe_raw_transaction(b64).await.ok();
+                    }
+                    Err(e) => {
+                        bundle.push_unresolved(
+                            "transaction",
+                            format!("transaction field present but failed to decode: {e}"),
+                        );
+                        construction_status = "transaction_decode_failed".into();
+                    }
+                }
             }
+        } else {
+            bundle.push_unresolved(
+                "construction",
+                format!(
+                    "HTTP {} — construction blocked or non-success body preserved (sanitized)",
+                    fetch.http_status
+                ),
+            );
         }
 
         let lineage_path = out_dir.join("lineage").join(format!("{key}.json"));
@@ -254,7 +405,7 @@ pub async fn run_experiment(manifest_path: &Path, base_dir: &Path) -> Result<Exp
             raw_path: relativize(base_dir, &raw_path),
             raw_sha256: hash,
             lineage_path: relativize(base_dir, &lineage_path),
-            response_timestamp_utc: captured_at,
+            response_timestamp_utc: fetch.response_timestamp_utc.clone(),
             route_leg_gross_output: obs.route_leg_gross_output,
             platform_fee_amount: obs.platform_fee_amount,
             net_out_amount: obs.net_out_amount,
@@ -267,9 +418,27 @@ pub async fn run_experiment(manifest_path: &Path, base_dir: &Path) -> Result<Exp
             transaction_byte_length: tx_len,
             transaction_presence_note: if tx_present {
                 "unsigned transaction bytes present".into()
+            } else if construction_blocked {
+                "construction blocked".into()
+            } else if manifest.endpoint_path == "order" {
+                "order response without transaction".into()
             } else {
                 "quote-stage only".into()
             },
+            request_timestamp_utc: Some(fetch.request_timestamp_utc),
+            http_status: Some(fetch.http_status),
+            construction_status,
+            execution_mode: json
+                .get("executionMode")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string()),
+            last_valid_block_height: json.get("lastValidBlockHeight").and_then(|v| v.as_u64()),
+            compute_unit_limit: json.get("computeUnitLimit").and_then(|v| v.as_u64()),
+            prioritization_fee_lamports: json
+                .get("prioritizationFeeLamports")
+                .and_then(|v| v.as_u64()),
+            transaction_b64_path: tx_b64_path,
+            raw_transaction: raw_tx_obs,
         });
         bundles.insert(key, bundle);
     }
@@ -287,14 +456,54 @@ pub async fn run_experiment(manifest_path: &Path, base_dir: &Path) -> Result<Exp
         diffs.insert(key.clone(), diff_bundles(baseline, bundle));
     }
 
-    let mechanism = build_mechanism_buckets(&manifest, baseline, &bundles, &runs);
+    let mut raw_tx_diffs = BTreeMap::new();
+    let mut canonical_tx_diffs = BTreeMap::new();
+    let mut candidate_encodings = Vec::new();
+    if let Some(base_b64) = tx_b64_by_key.get(&baseline_key) {
+        for (key, b64) in &tx_b64_by_key {
+            if key == &baseline_key {
+                continue;
+            }
+            if let Ok(d) = diff_raw_transactions(base_b64, b64) {
+                raw_tx_diffs.insert(key.clone(), d);
+            }
+            if let Ok(d) = diff_canonical_transactions(base_b64, b64, rpc_url, resolve_alts).await {
+                canonical_tx_diffs.insert(key.clone(), d);
+            }
+        }
+        for run in &runs {
+            if let (Some(th), Some(b64)) = (
+                &run.other_amount_threshold,
+                tx_b64_by_key.get(&run.treatment_value),
+            ) {
+                if let Ok(hits) =
+                    search_candidate_le_threshold_encoding(&run.treatment_value, b64, th)
+                {
+                    candidate_encodings.extend(hits);
+                }
+            }
+        }
+    }
+
+    let mechanism = build_mechanism_buckets(
+        &manifest,
+        baseline,
+        &bundles,
+        &runs,
+        &canonical_tx_diffs,
+        &candidate_encodings,
+    );
     let report = ExperimentReport {
         schema_version: LINEAGE_SCHEMA_VERSION.to_string(),
         experiment_id: manifest.experiment_id.clone(),
         treatment_variable: manifest.treatment_variable,
         baseline_value: baseline_key,
+        endpoint_path: manifest.endpoint_path.clone(),
         runs,
         diffs_vs_baseline: diffs,
+        raw_tx_diffs_vs_baseline: raw_tx_diffs,
+        canonical_tx_diffs_vs_baseline: canonical_tx_diffs,
+        candidate_threshold_encodings: candidate_encodings,
         mechanism,
         notes: manifest.notes.clone(),
     };
@@ -312,7 +521,8 @@ async fn load_or_fetch_response(
     value: &Value,
     input_mint: &str,
     output_mint: &str,
-) -> Result<String> {
+    user_public_key: Option<&str>,
+) -> Result<LiveFetch> {
     match manifest.mode {
         ExperimentMode::Fixture => {
             let dir = manifest
@@ -320,16 +530,37 @@ async fn load_or_fetch_response(
                 .as_ref()
                 .context("fixture_dir required")?;
             let path = resolve_against(base_dir, dir).join(format!("{}.json", value_key(value)));
-            fs::read_to_string(&path).with_context(|| format!("missing fixture {}", path.display()))
+            let body = fs::read_to_string(&path)
+                .with_context(|| format!("missing fixture {}", path.display()))?;
+            let ts = chrono::Utc::now().to_rfc3339();
+            Ok(LiveFetch {
+                request_timestamp_utc: ts.clone(),
+                response_timestamp_utc: ts,
+                http_status: 200,
+                body,
+            })
         }
         ExperimentMode::Live => {
             let (amount, slippage, fee_bps) = resolve_request_params(manifest, value)?;
+            let path = manifest.endpoint_path.as_str();
             let endpoint = match &manifest.endpoint_hostname {
                 Some(host) if host.starts_with("127.0.0.1") => {
-                    format!("http://{host}/quote")
+                    format!("http://{host}/{path}")
                 }
-                Some(host) if host == "dev-quote-api.dflow.net" => DEV_QUOTE_ENDPOINT.to_string(),
-                None => DEV_QUOTE_ENDPOINT.to_string(),
+                Some(host) if host == "dev-quote-api.dflow.net" => {
+                    if path == "quote" {
+                        DEV_QUOTE_ENDPOINT.to_string()
+                    } else {
+                        format!("https://dev-quote-api.dflow.net/{path}")
+                    }
+                }
+                None => {
+                    if path == "quote" {
+                        DEV_QUOTE_ENDPOINT.to_string()
+                    } else {
+                        format!("https://dev-quote-api.dflow.net/{path}")
+                    }
+                }
                 Some(host) => bail!("unsafe endpoint_hostname '{host}'"),
             };
             let mut url = format!(
@@ -338,14 +569,25 @@ async fn load_or_fetch_response(
             if let Some(fee) = fee_bps {
                 url.push_str(&format!("&platformFeeBps={fee}"));
             }
+            if path == "order" {
+                let pk = user_public_key.context(
+                    "order live fetch requires a user-controlled public address (manifest or env)",
+                )?;
+                url.push_str(&format!("&userPublicKey={pk}"));
+            }
+            let request_timestamp_utc = chrono::Utc::now().to_rfc3339();
             let client = reqwest::Client::new();
             let resp = client.get(&url).send().await?;
-            let status = resp.status();
-            let text = resp.text().await?;
-            if !status.is_success() {
-                bail!("live quote failed {status}: {text}");
-            }
-            Ok(text)
+            let http_status = resp.status().as_u16();
+            let body = resp.text().await?;
+            let response_timestamp_utc = chrono::Utc::now().to_rfc3339();
+            // Preserve non-success bodies for construction-blocked classification.
+            Ok(LiveFetch {
+                request_timestamp_utc,
+                response_timestamp_utc,
+                http_status,
+                body,
+            })
         }
     }
 }
@@ -426,6 +668,8 @@ fn build_mechanism_buckets(
     baseline: &LineageBundle,
     bundles: &BTreeMap<String, LineageBundle>,
     runs: &[TreatmentRun],
+    canonical_tx_diffs: &BTreeMap<String, CanonicalTransactionDiff>,
+    candidate_encodings: &[CandidateEncodingHit],
 ) -> MechanismBuckets {
     let mut changed: Vec<String> = Vec::new();
     let mut unchanged: Vec<String> = Vec::new();
@@ -577,6 +821,43 @@ fn build_mechanism_buckets(
                 "cross-request: outAmount movement across sequential quotes is not attributed solely to slippageBps"
                     .into(),
             );
+            if !candidate_encodings.is_empty() {
+                candidate.push(
+                    "instruction data contains little-endian bytes matching otherAmountThreshold — Candidate encoding relationship only"
+                        .into(),
+                );
+            }
+            if canonical_tx_diffs
+                .values()
+                .any(|d| d.instruction_data_hashes.equal && d.stable_aside_from_blockhash)
+            {
+                candidate.push(
+                    "canonical transaction fields stable aside from recent blockhash under this run"
+                        .into(),
+                );
+            }
+            if canonical_tx_diffs
+                .values()
+                .any(|d| !d.instruction_data_hashes.equal)
+            {
+                if runs
+                    .iter()
+                    .map(|r| (r.route_venue.clone(), r.route_market_key.clone()))
+                    .collect::<std::collections::BTreeSet<_>>()
+                    .len()
+                    > 1
+                {
+                    candidate.push(
+                        "instruction-data differences co-occur with route venue/marketKey changes — do not attribute to slippage alone"
+                            .into(),
+                    );
+                } else {
+                    candidate.push(
+                        "instruction-data hashes differ while route venue/marketKey unchanged in this run (observational)"
+                            .into(),
+                    );
+                }
+            }
         }
         TreatmentVariable::InputAmount => {
             candidate.push(
@@ -597,6 +878,15 @@ fn build_mechanism_buckets(
     if runs.iter().all(|r| !r.transaction_present) {
         unresolved.push(
             "instruction-level encoding of fee or slippage (requires unsigned transaction bytes)"
+                .into(),
+        );
+    }
+    if runs
+        .iter()
+        .any(|r| r.construction_status == "construction_blocked")
+    {
+        unresolved.push(
+            "order construction blocked for at least one treatment (wallet/account or HTTP error)"
                 .into(),
         );
     }
@@ -632,39 +922,93 @@ fn observe_response_fields(json: &Value, bundle: &LineageBundle) -> ResponseObse
         .or_else(|| take_amount_string(json, "minOutAmount"))
         .or_else(|| bundle.quote.min_out_amount.clone());
 
-    let (route_venue, route_market_key, route_leg_gross_output) =
-        if let Some(last) = bundle.route.legs.last() {
-            (
-                Some(last.venue_or_label.clone()),
-                last.market_key.clone(),
-                last.out_amount.clone(),
-            )
-        } else if let Some(legs) = json.get("routePlan").and_then(|r| r.as_array()) {
-            match legs.last() {
-                Some(leg) => (
-                    take_string_field(leg, "venue"),
-                    take_string_field(leg, "marketKey"),
-                    take_amount_string(leg, "outAmount"),
-                ),
-                None => (None, None, None),
-            }
-        } else {
-            (None, None, None)
-        };
+    let legs_json = json
+        .get("routePlan")
+        .and_then(|r| r.as_array())
+        .cloned()
+        .unwrap_or_default();
+    let leg_count = if !bundle.route.legs.is_empty() {
+        bundle.route.legs.len()
+    } else {
+        legs_json.len()
+    };
+
+    // Full topology across all legs (last-leg-only mislabels multi-hop /order routes).
+    let route_venue = if !bundle.route.legs.is_empty() {
+        Some(
+            bundle
+                .route
+                .legs
+                .iter()
+                .map(|l| l.venue_or_label.clone())
+                .collect::<Vec<_>>()
+                .join("|"),
+        )
+    } else if !legs_json.is_empty() {
+        Some(
+            legs_json
+                .iter()
+                .filter_map(|l| take_string_field(l, "venue"))
+                .collect::<Vec<_>>()
+                .join("|"),
+        )
+    } else {
+        None
+    };
+    let route_market_key = if !bundle.route.legs.is_empty() {
+        Some(
+            bundle
+                .route
+                .legs
+                .iter()
+                .map(|l| l.market_key.clone().unwrap_or_default())
+                .collect::<Vec<_>>()
+                .join("|"),
+        )
+    } else if !legs_json.is_empty() {
+        Some(
+            legs_json
+                .iter()
+                .filter_map(|l| take_string_field(l, "marketKey"))
+                .collect::<Vec<_>>()
+                .join("|"),
+        )
+    } else {
+        None
+    };
+
+    // Fee accounting identity is defined for single-leg routes only.
+    let route_leg_gross_output = if leg_count == 1 {
+        bundle
+            .route
+            .legs
+            .first()
+            .and_then(|l| l.out_amount.clone())
+            .or_else(|| {
+                legs_json
+                    .first()
+                    .and_then(|l| take_amount_string(l, "outAmount"))
+            })
+    } else {
+        None
+    };
 
     let platform_fee_amount = match json.get("platformFee") {
         None | Some(Value::Null) => Some("0".into()),
-        // Object present without amount → unknown for accounting (None).
         Some(fee) => take_amount_string(fee, "amount"),
     };
 
-    let within_response_accounting_identity = match (
-        &route_leg_gross_output,
-        &platform_fee_amount,
-        &net_out_amount,
-    ) {
-        (Some(g), Some(f), Some(n)) => Some(within_response_accounting_holds(g, f, n)),
-        _ => None,
+    let within_response_accounting_identity = if leg_count == 1 {
+        match (
+            &route_leg_gross_output,
+            &platform_fee_amount,
+            &net_out_amount,
+        ) {
+            (Some(g), Some(f), Some(n)) => Some(within_response_accounting_holds(g, f, n)),
+            _ => None,
+        }
+    } else {
+        None
     };
 
     let implied_threshold_distance_bps = match (&net_out_amount, &other_amount_threshold) {
@@ -723,8 +1067,8 @@ fn take_string_field(value: &Value, key: &str) -> Option<String> {
         .map(|s| s.to_string())
 }
 
-/// Venue + marketKey only — excludes leg amounts so fee/slippage quote movement
-/// is not mislabeled as a route topology change.
+/// Venue + marketKey for every leg — excludes leg amounts so fee/slippage quote
+/// movement is not mislabeled as a route topology change.
 fn route_topology_signature(b: &LineageBundle) -> String {
     b.route
         .legs
@@ -737,15 +1081,16 @@ fn route_topology_signature(b: &LineageBundle) -> String {
             )
         })
         .collect::<Vec<_>>()
-        .join("|")
+        .join("||")
 }
 
 fn render_mechanism_markdown(report: &ExperimentReport) -> String {
     let mut md = String::new();
     md.push_str("# Experiment mechanism report\n\n");
     md.push_str(&format!(
-        "Experiment `{}` · treatment `{}` · baseline `{}`\n\n",
+        "Experiment `{}` · endpoint `/{}` · treatment `{}` · baseline `{}`\n\n",
         report.experiment_id,
+        report.endpoint_path,
         report.treatment_variable.as_str(),
         report.baseline_value
     ));
@@ -802,13 +1147,49 @@ fn render_mechanism_markdown(report: &ExperimentReport) -> String {
     md.push_str("## Not observable without settlement\n\n");
     append_list(&mut md, &report.mechanism.not_observable_without_settlement);
 
+    if !report.canonical_tx_diffs_vs_baseline.is_empty() {
+        md.push_str("## Canonical transaction diffs vs baseline\n\n");
+        md.push_str(
+            "Recent blockhash is expected to differ and is not treated as full structural change.\n\n",
+        );
+        for (k, d) in &report.canonical_tx_diffs_vs_baseline {
+            md.push_str(&format!(
+                "### Treatment `{k}`\n\n- stable_aside_from_blockhash: {}\n- instruction_data_hashes equal: {}\n- program_set equal: {}\n- static_account_keys equal: {}\n- resolved_loaded_account_vector equal: {}\n\n",
+                d.stable_aside_from_blockhash,
+                d.instruction_data_hashes.equal,
+                d.program_set.equal,
+                d.static_account_keys.equal,
+                d.resolved_loaded_account_vector.equal,
+            ));
+        }
+    }
+    if !report.candidate_threshold_encodings.is_empty() {
+        md.push_str("## Candidate threshold encodings\n\n");
+        for h in &report.candidate_threshold_encodings {
+            md.push_str(&format!(
+                "- treatment `{}` ix {} offset {} width {}: {} (`{}`)\n",
+                h.treatment_value,
+                h.instruction_index,
+                h.byte_offset,
+                h.width_bytes,
+                h.classification,
+                h.matched_value
+            ));
+        }
+        md.push('\n');
+    }
+
     md.push_str("## Runs (artifact index)\n\n");
-    md.push_str("| value | baseline | tx present | note | raw sha256 |\n|---|---|---|---|---|\n");
+    md.push_str("| value | baseline | HTTP | construction | tx present | note | raw sha256 |\n|---|---|---|---|---|---|---|\n");
     for r in &report.runs {
         md.push_str(&format!(
-            "| {} | {} | {} | {} | `{}` |\n",
+            "| {} | {} | {} | {} | {} | {} | `{}` |\n",
             r.treatment_value,
             r.is_baseline,
+            r.http_status
+                .map(|s| s.to_string())
+                .unwrap_or_else(|| "n/a".into()),
+            r.construction_status,
             r.transaction_present,
             r.transaction_presence_note,
             r.raw_sha256
@@ -897,6 +1278,9 @@ mod tests {
             output_path: "artifacts/experiments/fee_injection_synthetic".into(),
             fixture_dir: Some("tests/fixtures/experiments/fee_injection".into()),
             endpoint_hostname: Some("dev-quote-api.dflow.net".into()),
+            endpoint_path: "quote".into(),
+            user_public_key: None,
+            user_public_key_env: None,
             notes: "synthetic".into(),
         }
     }

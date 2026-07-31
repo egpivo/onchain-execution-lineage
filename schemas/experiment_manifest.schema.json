@@ -54,6 +54,13 @@
     "output_path": { "type": "string" },
     "fixture_dir": { "type": ["string", "null"] },
     "endpoint_hostname": { "type": ["string", "null"] },
+    "endpoint_path": {
+      "type": "string",
+      "enum": ["quote", "order"],
+      "default": "quote"
+    },
+    "user_public_key": { "type": ["string", "null"] },
+    "user_public_key_env": { "type": ["string", "null"] },
     "notes": { "type": "string" }
   }
 }

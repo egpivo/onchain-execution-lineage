@@ -94,7 +94,7 @@ Private research captures and fingerprint corpora live under `.local/corpus/`
 | `trace` | Build `LineageBundle` + Markdown/CSV/DOT |
 | `diff` | Compare two bundles |
 | `fingerprint` | Corpus group report (refuses n&lt;2 promotion) |
-| `experiment` | Bounded fixture/live mechanism experiment |
+| `experiment` | Bounded fixture/live mechanism experiment (`/quote` or `/order`) |
 
 ## Limits
 

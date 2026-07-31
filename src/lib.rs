@@ -21,3 +21,4 @@ pub mod rpc;
 pub mod settlement;
 pub mod trace;
 pub mod transaction;
+pub mod tx_compare;

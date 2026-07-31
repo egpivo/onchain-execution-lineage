@@ -122,6 +122,10 @@ enum Commands {
         manifest: PathBuf,
         #[arg(long, default_value = ".")]
         base_dir: PathBuf,
+        #[arg(long, default_value = "https://api.mainnet-beta.solana.com")]
+        rpc_url: String,
+        #[arg(long, default_value_t = true)]
+        resolve_alts: bool,
     },
 }
 
@@ -408,19 +412,41 @@ async fn main() -> Result<()> {
                 println!("insufficient_sample=true (n=1 promotion refused)");
             }
         }
-        Commands::Experiment { manifest, base_dir } => {
-            let report = experiment::run_experiment(&manifest, &base_dir).await?;
+        Commands::Experiment {
+            manifest,
+            base_dir,
+            rpc_url,
+            resolve_alts,
+        } => {
+            let report =
+                experiment::run_experiment_with_rpc(&manifest, &base_dir, &rpc_url, resolve_alts)
+                    .await?;
             println!(
-                "experiment_id={} treatments={} baseline={}",
+                "experiment_id={} endpoint=/{} treatments={} baseline={}",
                 report.experiment_id,
+                report.endpoint_path,
                 report.runs.len(),
                 report.baseline_value
             );
             for run in &report.runs {
                 println!(
-                    "  value={} baseline={} raw={}",
-                    run.treatment_value, run.is_baseline, run.raw_path
+                    "  value={} http={:?} construction={} tx={} venue={:?} raw={}",
+                    run.treatment_value,
+                    run.http_status,
+                    run.construction_status,
+                    run.transaction_present,
+                    run.route_venue,
+                    run.raw_path
                 );
+            }
+            if !report.canonical_tx_diffs_vs_baseline.is_empty() {
+                println!("canonical_tx_diffs_vs_baseline:");
+                for (k, d) in &report.canonical_tx_diffs_vs_baseline {
+                    println!(
+                        "  vs {k}: stable_aside_from_blockhash={} data_hashes_equal={}",
+                        d.stable_aside_from_blockhash, d.instruction_data_hashes.equal
+                    );
+                }
             }
             println!(
                 "wrote experiment_report.json / experiment_report.md under the manifest output_path"
