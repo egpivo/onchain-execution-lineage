@@ -18,15 +18,25 @@ async fn fee_injection_fixture_experiment_runs() {
         .changed
         .iter()
         .any(|c| c.contains("platformFee")));
+    assert!(report.runs.iter().all(|r| {
+        r.within_response_accounting_identity == Some(true)
+            && r.transaction_presence_note == "quote-stage only"
+    }));
     assert!(report
         .mechanism
-        .not_observable_without_settlement
+        .unchanged
         .iter()
-        .any(|s| s.contains("realized")));
+        .any(|u| u.contains("within-response accounting identity")));
+    assert!(report
+        .mechanism
+        .unchanged
+        .iter()
+        .any(|u| u.contains("route venue/marketKey: unchanged in this run")));
     let out = root().join("artifacts/experiments/fee_injection_synthetic/experiment_report.md");
     let md = std::fs::read_to_string(out).unwrap();
-    assert!(md.contains("Controlled experiments are not simulated fills"));
-    assert!(md.contains("## Candidate mechanism"));
+    assert!(md.contains("within-response accounting identity"));
+    assert!(md.contains("quote-stage only"));
+    assert!(md.contains("## Per-treatment response observations"));
 }
 
 #[tokio::test]
@@ -39,6 +49,10 @@ async fn slippage_encoding_fixture_experiment_runs() {
         .changed
         .iter()
         .any(|c| c.contains("otherAmountThreshold")));
+    for r in &report.runs {
+        assert!(r.implied_threshold_distance_bps.is_some());
+        assert_eq!(r.transaction_presence_note, "quote-stage only");
+    }
 }
 
 #[tokio::test]
