@@ -25,3 +25,6 @@ target
 
 /target
 .local/
+
+# Regenerable experiment runs (source fixtures live under tests/fixtures/experiments/)
+/artifacts/experiments/

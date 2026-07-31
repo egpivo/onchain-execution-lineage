@@ -6,6 +6,7 @@ pub mod artifact;
 pub mod capture;
 pub mod diff;
 pub mod evidence;
+pub mod experiment;
 pub mod fingerprint;
 pub mod instruction_map;
 pub mod lineage;

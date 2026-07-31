@@ -1,8 +1,8 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 use dflow_lineage::{
-    artifact, capture, diff, fingerprint, instruction_map, lineage, lookup_tables, pairs, report,
-    rpc, trace, transaction,
+    artifact, capture, diff, experiment, fingerprint, instruction_map, lineage, lookup_tables,
+    pairs, report, rpc, trace, transaction,
 };
 use std::path::PathBuf;
 
@@ -115,6 +115,13 @@ enum Commands {
         base_dir: PathBuf,
         #[arg(long, default_value = "artifacts/analysis/fingerprint_report.json")]
         out: PathBuf,
+    },
+    /// Run a bounded read-only provider experiment from a manifest.
+    Experiment {
+        #[arg(long)]
+        manifest: PathBuf,
+        #[arg(long, default_value = ".")]
+        base_dir: PathBuf,
     },
 }
 
@@ -400,6 +407,24 @@ async fn main() -> Result<()> {
             if report.insufficient_sample {
                 println!("insufficient_sample=true (n=1 promotion refused)");
             }
+        }
+        Commands::Experiment { manifest, base_dir } => {
+            let report = experiment::run_experiment(&manifest, &base_dir).await?;
+            println!(
+                "experiment_id={} treatments={} baseline={}",
+                report.experiment_id,
+                report.runs.len(),
+                report.baseline_value
+            );
+            for run in &report.runs {
+                println!(
+                    "  value={} baseline={} raw={}",
+                    run.treatment_value, run.is_baseline, run.raw_path
+                );
+            }
+            println!(
+                "wrote experiment_report.json / experiment_report.md under the manifest output_path"
+            );
         }
     }
 

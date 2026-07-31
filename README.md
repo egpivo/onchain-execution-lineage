@@ -5,7 +5,7 @@
 
 **What survives from an execution interface into a Solana transaction?**
 
-Read-only Solana execution provenance and transaction diffing in Rust.
+Read-only Solana execution mechanism and transaction-lineage experiments in Rust.
 
 No signing. No submission. No wallet keys.
 
@@ -51,6 +51,24 @@ cargo run -- trace \
   --out-json artifacts/analysis/dflow_dev_lineage.json
 ```
 
+## Controlled experiments are not simulated fills
+
+`experiment` runs a **bounded**, manifest-declared set of provider requests
+(fixture JSON or live developer quotes). It compares quote fields, optional
+unsigned transactions, and lineage diffs against a baseline.
+
+It does **not** simulate fills, balances, wallets, realized fees, PnL, or
+landed execution. Mechanism reports only bucket what changed / did not change /
+cannot be observed without settlement.
+
+```bash
+cargo run -- experiment \
+  --manifest tests/fixtures/experiments/fee_injection_synthetic.json
+```
+
+Public synthetic manifests: fee injection, slippage threshold encoding, and
+size/route change under `tests/fixtures/experiments/`.
+
 Private research captures and fingerprint corpora live under `.local/corpus/`
 (not published). Docs / ADR / changelog also live under `.local/docs/`.
 
@@ -76,6 +94,7 @@ Private research captures and fingerprint corpora live under `.local/corpus/`
 | `trace` | Build `LineageBundle` + Markdown/CSV/DOT |
 | `diff` | Compare two bundles |
 | `fingerprint` | Corpus group report (refuses n&lt;2 promotion) |
+| `experiment` | Bounded fixture/live mechanism experiment |
 
 ## Limits
 
