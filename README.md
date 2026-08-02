@@ -95,6 +95,7 @@ Private research captures and fingerprint corpora live under `.local/corpus/`
 | `diff` | Compare two bundles |
 | `fingerprint` | Corpus group report (refuses n&lt;2 promotion) |
 | `experiment` | Bounded fixture/live mechanism experiment (`/quote` or `/order`) |
+| `route-bracket` | Bracketed `/order` A1/T/A2 route-stability experiment |
 
 ## Limits
 

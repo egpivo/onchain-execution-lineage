@@ -2,7 +2,7 @@ use anyhow::Result;
 use clap::{Parser, Subcommand};
 use dflow_lineage::{
     artifact, capture, diff, experiment, fingerprint, instruction_map, lineage, lookup_tables,
-    pairs, report, rpc, trace, transaction,
+    pairs, report, route_bracket, rpc, trace, transaction,
 };
 use std::path::PathBuf;
 
@@ -118,6 +118,17 @@ enum Commands {
     },
     /// Run a bounded read-only provider experiment from a manifest.
     Experiment {
+        #[arg(long)]
+        manifest: PathBuf,
+        #[arg(long, default_value = ".")]
+        base_dir: PathBuf,
+        #[arg(long, default_value = "https://api.mainnet-beta.solana.com")]
+        rpc_url: String,
+        #[arg(long, default_value_t = true)]
+        resolve_alts: bool,
+    },
+    /// Bracketed /order route-stability experiment (A1/T/A2).
+    RouteBracket {
         #[arg(long)]
         manifest: PathBuf,
         #[arg(long, default_value = ".")]
@@ -451,6 +462,42 @@ async fn main() -> Result<()> {
             println!(
                 "wrote experiment_report.json / experiment_report.md under the manifest output_path"
             );
+        }
+        Commands::RouteBracket {
+            manifest,
+            base_dir,
+            rpc_url,
+            resolve_alts,
+        } => {
+            let report = route_bracket::run_route_bracket_experiment(
+                &manifest,
+                &base_dir,
+                &rpc_url,
+                resolve_alts,
+            )
+            .await?;
+            println!(
+                "experiment_id={} batches={} requests={} exact_route_stable={} eligible={}",
+                report.experiment_id,
+                report.attempted_batches,
+                report.total_requests,
+                report.exact_route_stable_batches,
+                report.eligible_instruction_diff_batches
+            );
+            for b in &report.batches {
+                println!(
+                    "  batch{} T={} complete={} exact={} topo={:?}/{:?} eligible={} reasons={}",
+                    b.batch_index,
+                    b.treatment_slippage_bps,
+                    b.complete,
+                    b.exact_route_stable,
+                    b.topology_stable_a1_t,
+                    b.topology_stable_t_a2,
+                    b.eligible_for_instruction_diff,
+                    b.ineligibility_reasons.join("; ")
+                );
+            }
+            println!("wrote artifacts under manifest output_path");
         }
     }
 

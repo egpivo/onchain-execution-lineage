@@ -17,6 +17,8 @@ pub mod pairs;
 pub mod program_registry;
 pub mod providers;
 pub mod report;
+pub mod route_bracket;
+pub mod route_fingerprint;
 pub mod rpc;
 pub mod settlement;
 pub mod trace;

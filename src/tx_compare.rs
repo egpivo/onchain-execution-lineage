@@ -53,6 +53,36 @@ pub struct CanonicalTransactionDiff {
     /// True when every classified field other than recent_blockhash (and
     /// empty/default signature slots) is equal.
     pub stable_aside_from_blockhash: bool,
+    /// Topology only: header, accounts, ALTs, program indices, account indices,
+    /// instruction count, program set, compute-budget *presence/indices*
+    /// (not compute-budget data hashes). Excludes instruction data hashes.
+    pub topology_stable: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChangedByteRange {
+    pub instruction_index: usize,
+    pub start: usize,
+    pub end: usize,
+    pub left_hex: String,
+    pub right_hex: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InstructionPayloadDiff {
+    pub instruction_index: usize,
+    pub left_data_len: usize,
+    pub right_data_len: usize,
+    pub left_data_sha256: String,
+    pub right_data_sha256: String,
+    pub changed_byte_offsets: Vec<usize>,
+    pub changed_ranges: Vec<ChangedByteRange>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PayloadDiffReport {
+    pub instructions: Vec<InstructionPayloadDiff>,
+    pub any_payload_difference: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -180,18 +210,38 @@ pub async fn diff_canonical_transactions(
         "instruction count",
     );
 
-    let stable_aside_from_blockhash = message_header.equal
+    let topology_core = message_header.equal
         && static_account_keys.equal
         && alt_references.equal
         && (resolved_loaded_account_vector.equal
             || resolved_loaded_account_vector.note.contains("skipped"))
         && compiled_instruction_program_indices.equal
         && instruction_account_indices.equal
-        && instruction_data_hashes.equal
-        && compute_budget_instructions.equal
         && program_set.equal
         && instruction_count.equal
         && signatures.equal;
+
+    // Compute-budget topology: same indices only (ignore data hash churn).
+    let cb_topo_left = left
+        .decoded
+        .instructions
+        .iter()
+        .filter(|i| i.program_label == "compute_budget")
+        .map(|i| i.index.to_string())
+        .collect::<Vec<_>>()
+        .join(",");
+    let cb_topo_right = right
+        .decoded
+        .instructions
+        .iter()
+        .filter(|i| i.program_label == "compute_budget")
+        .map(|i| i.index.to_string())
+        .collect::<Vec<_>>()
+        .join(",");
+    let topology_stable = topology_core && cb_topo_left == cb_topo_right;
+
+    let stable_aside_from_blockhash =
+        topology_stable && instruction_data_hashes.equal && compute_budget_instructions.equal;
 
     Ok(CanonicalTransactionDiff {
         signatures,
@@ -207,7 +257,216 @@ pub async fn diff_canonical_transactions(
         program_set,
         instruction_count,
         stable_aside_from_blockhash,
+        topology_stable,
     })
+}
+
+/// Byte-level instruction payload diff (raw data, not hashes only).
+pub fn diff_instruction_payloads(left_b64: &str, right_b64: &str) -> Result<PayloadDiffReport> {
+    let left_raw = STANDARD.decode(left_b64.trim())?;
+    let right_raw = STANDARD.decode(right_b64.trim())?;
+    let left_vtx: VersionedTransaction = bincode::deserialize(&left_raw)?;
+    let right_vtx: VersionedTransaction = bincode::deserialize(&right_raw)?;
+    let left_ixs = left_vtx.message.instructions();
+    let right_ixs = right_vtx.message.instructions();
+    let n = left_ixs.len().max(right_ixs.len());
+    let mut instructions = Vec::new();
+    for i in 0..n {
+        let ld = left_ixs.get(i).map(|x| x.data.as_slice()).unwrap_or(&[]);
+        let rd = right_ixs.get(i).map(|x| x.data.as_slice()).unwrap_or(&[]);
+        let mut hasher_l = Sha256::new();
+        hasher_l.update(ld);
+        let mut hasher_r = Sha256::new();
+        hasher_r.update(rd);
+        let mut offsets = Vec::new();
+        let max_len = ld.len().max(rd.len());
+        for off in 0..max_len {
+            let lb = ld.get(off).copied();
+            let rb = rd.get(off).copied();
+            if lb != rb {
+                offsets.push(off);
+            }
+        }
+        let ranges = collapse_ranges(i, ld, rd, &offsets);
+        instructions.push(InstructionPayloadDiff {
+            instruction_index: i,
+            left_data_len: ld.len(),
+            right_data_len: rd.len(),
+            left_data_sha256: format!("{:x}", hasher_l.finalize()),
+            right_data_sha256: format!("{:x}", hasher_r.finalize()),
+            changed_byte_offsets: offsets,
+            changed_ranges: ranges,
+        });
+    }
+    let any_payload_difference = instructions
+        .iter()
+        .any(|i| i.left_data_sha256 != i.right_data_sha256 || i.left_data_len != i.right_data_len);
+    Ok(PayloadDiffReport {
+        instructions,
+        any_payload_difference,
+    })
+}
+
+fn collapse_ranges(
+    instruction_index: usize,
+    left: &[u8],
+    right: &[u8],
+    offsets: &[usize],
+) -> Vec<ChangedByteRange> {
+    if offsets.is_empty() {
+        return Vec::new();
+    }
+    let mut ranges = Vec::new();
+    let mut start = offsets[0];
+    let mut prev = offsets[0];
+    for &off in offsets.iter().skip(1) {
+        if off == prev + 1 {
+            prev = off;
+            continue;
+        }
+        ranges.push(range_hex(instruction_index, left, right, start, prev + 1));
+        start = off;
+        prev = off;
+    }
+    ranges.push(range_hex(instruction_index, left, right, start, prev + 1));
+    ranges
+}
+
+fn range_hex(
+    instruction_index: usize,
+    left: &[u8],
+    right: &[u8],
+    start: usize,
+    end: usize,
+) -> ChangedByteRange {
+    let lh: String = left
+        .get(start..end.min(left.len()))
+        .unwrap_or(&[])
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect();
+    let rh: String = right
+        .get(start..end.min(right.len()))
+        .unwrap_or(&[])
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect();
+    ChangedByteRange {
+        instruction_index,
+        start,
+        end,
+        left_hex: lh,
+        right_hex: rh,
+    }
+}
+
+/// Search changed ranges (and full ix data) for LE/BE encodings of amounts.
+pub fn search_candidate_encodings_in_payload(
+    treatment_label: &str,
+    left_b64: &str,
+    right_b64: &str,
+    amounts: &[(&str, &str)],
+) -> Result<Vec<CandidateEncodingHit>> {
+    let payload = diff_instruction_payloads(left_b64, right_b64)?;
+    let right_raw = STANDARD.decode(right_b64.trim())?;
+    let right_vtx: VersionedTransaction = bincode::deserialize(&right_raw)?;
+    let mut hits = Vec::new();
+    for ix_diff in &payload.instructions {
+        if ix_diff.changed_byte_offsets.is_empty()
+            && ix_diff.left_data_sha256 == ix_diff.right_data_sha256
+        {
+            continue;
+        }
+        let Some(ix) = right_vtx
+            .message
+            .instructions()
+            .get(ix_diff.instruction_index)
+        else {
+            continue;
+        };
+        for (label, amount_str) in amounts {
+            let Ok(amount) = amount_str.parse::<u128>() else {
+                continue;
+            };
+            for (width, needle, endian) in amount_needles(amount) {
+                // Prefer matches that overlap a changed range.
+                for range in &ix_diff.changed_ranges {
+                    if let Some(rel) = find_subslice(
+                        ix.data
+                            .get(range.start..range.end.min(ix.data.len()))
+                            .unwrap_or(&[]),
+                        &needle,
+                    ) {
+                        hits.push(CandidateEncodingHit {
+                            treatment_value: format!("{treatment_label}:{label}:{endian}"),
+                            instruction_index: ix_diff.instruction_index,
+                            byte_offset: range.start + rel,
+                            width_bytes: width,
+                            matched_value: amount_str.to_string(),
+                            classification: "Candidate encoding relationship".into(),
+                        });
+                    }
+                }
+                // Also record full-data matches in changed instructions.
+                if let Some(offset) = find_subslice(&ix.data, &needle) {
+                    if ix_diff
+                        .changed_byte_offsets
+                        .iter()
+                        .any(|&o| o >= offset && o < offset.saturating_add(width))
+                    {
+                        hits.push(CandidateEncodingHit {
+                            treatment_value: format!("{treatment_label}:{label}:{endian}"),
+                            instruction_index: ix_diff.instruction_index,
+                            byte_offset: offset,
+                            width_bytes: width,
+                            matched_value: amount_str.to_string(),
+                            classification: "Candidate encoding relationship".into(),
+                        });
+                    }
+                }
+            }
+        }
+    }
+    // Dedup
+    hits.sort_by(|a, b| {
+        (
+            a.instruction_index,
+            a.byte_offset,
+            a.width_bytes,
+            a.matched_value.clone(),
+            a.treatment_value.clone(),
+        )
+            .cmp(&(
+                b.instruction_index,
+                b.byte_offset,
+                b.width_bytes,
+                b.matched_value.clone(),
+                b.treatment_value.clone(),
+            ))
+    });
+    hits.dedup_by(|a, b| {
+        a.instruction_index == b.instruction_index
+            && a.byte_offset == b.byte_offset
+            && a.width_bytes == b.width_bytes
+            && a.matched_value == b.matched_value
+            && a.treatment_value == b.treatment_value
+    });
+    Ok(hits)
+}
+
+fn amount_needles(amount: u128) -> Vec<(usize, Vec<u8>, &'static str)> {
+    let mut out = Vec::new();
+    if amount <= u64::MAX as u128 {
+        let v = amount as u64;
+        out.push((8, v.to_le_bytes().to_vec(), "u64_le"));
+        out.push((8, v.to_be_bytes().to_vec(), "u64_be"));
+    }
+    if amount <= u32::MAX as u128 {
+        let v = amount as u32;
+        out.push((4, v.to_le_bytes().to_vec(), "u32_le"));
+        out.push((4, v.to_be_bytes().to_vec(), "u32_be"));
+    }
+    out
 }
 
 /// Search raw instruction data for little-endian encodings of a decimal amount.
