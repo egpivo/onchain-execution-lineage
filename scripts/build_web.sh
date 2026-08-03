@@ -16,4 +16,4 @@ cd "$repo_root"
 cargo run --quiet --example generate_web_sample
 echo
 echo "web/ is a static site. Serve it locally with:"
-echo "  python3 -m http.server --directory web 8080"
+echo "  make serve"

@@ -208,7 +208,9 @@ const VIEWS = {
 export function renderDflowSlippage(root) {
   const sub = state.sub || "";
   header(root, sub);
-  const view = VIEWS[sub];
+  // hasOwn: `sub` is URL-controlled, and an inherited key such as
+  // "constructor" would pass a truthy check and be called as a view.
+  const view = Object.hasOwn(VIEWS, sub) ? VIEWS[sub] : null;
   if (!view) {
     root.append(note(`No view "${sub}" in this use case.`));
     return;

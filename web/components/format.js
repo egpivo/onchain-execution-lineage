@@ -203,10 +203,6 @@ export function subnav(items) {
   );
 }
 
-export function section(title, ...children) {
-  return el("section", {}, [el("h2", { text: title }), ...children.flat()]);
-}
-
 export function prose(...paragraphs) {
   return el(
     "div",

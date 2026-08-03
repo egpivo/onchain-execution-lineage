@@ -781,3 +781,26 @@ fn bundled_causal_model_keeps_selection_distinct_from_intervention() {
     assert!(!blob.contains("R = r == do(R = r)"));
     assert_eq!(model["collider"]["structure"].as_str(), Some("S -> R <- U"));
 }
+
+/// Route and view ids arrive from the URL and are used as object keys. A plain
+/// truthy lookup lets an inherited key such as `constructor` resolve to a
+/// function on Object.prototype, which is then called as a renderer: the page
+/// silently blanks instead of reporting an unknown id. Both dispatch tables,
+/// and the declared-metric-path reader, must consult own properties only.
+#[test]
+fn url_controlled_lookups_reject_inherited_keys() {
+    for (file, table) in [
+        ("app.js", "CASE_VIEWS"),
+        ("views/dflow-slippage/index.js", "VIEWS"),
+    ] {
+        let source = read(file);
+        assert!(
+            source.contains(&format!("Object.hasOwn({table},")),
+            "{file} must guard the {table} lookup with Object.hasOwn"
+        );
+    }
+    assert!(
+        read("app.js").contains("Object.hasOwn(acc, key)"),
+        "readPath must resolve own properties only"
+    );
+}

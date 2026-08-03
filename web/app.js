@@ -63,7 +63,9 @@ export function readPath(object, path) {
   return path.split(".").reduce((acc, key) => {
     if (acc === undefined || acc === null) return undefined;
     if (key === "length") return Array.isArray(acc) ? acc.length : undefined;
-    return acc[key];
+    // Own properties only: a declared path addresses data in the artifact,
+    // never an inherited member of the object that happens to carry it.
+    return Object.hasOwn(acc, key) ? acc[key] : undefined;
   }, object);
 }
 
@@ -190,7 +192,10 @@ export function render() {
   switch (state.route) {
     case "explore":
       if (state.caseId) {
-        const renderer = CASE_VIEWS[state.caseId];
+        // hasOwn, not a truthy lookup: the id comes from the URL, and
+        // "constructor" would otherwise resolve to an inherited function and
+        // be called as a renderer instead of reporting an unknown case.
+        const renderer = Object.hasOwn(CASE_VIEWS, state.caseId) ? CASE_VIEWS[state.caseId] : null;
         if (renderer) renderer(view);
         else {
           view.append(errorBox(`No use case with id "${state.caseId}".`));

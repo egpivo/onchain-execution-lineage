@@ -208,19 +208,6 @@ a:hover {
   border-bottom-color: var(--ink);
 }
 
-.nav .secondary {
-  color: var(--faint);
-  border: 1px solid var(--rule);
-  border-bottom-width: 1px;
-  margin-left: 10px;
-  padding: 5px 10px;
-  align-self: center;
-}
-
-.nav .secondary:hover {
-  border-color: var(--ink);
-}
-
 main {
   max-width: var(--wide);
   margin: 0 auto;
@@ -397,11 +384,6 @@ p {
   border-color: var(--ink);
   color: var(--paper);
   font-weight: 600;
-}
-
-.btn-quiet {
-  border-style: dashed;
-  color: var(--graphite);
 }
 
 /* ---- registers (formerly cards) ---------------------------------------- */
@@ -1837,11 +1819,6 @@ pre {
   .nav a {
     padding: 6px 9px;
     font-size: 12px;
-  }
-
-  .nav .secondary {
-    margin-left: 0;
-    padding: 4px 8px;
   }
 
   h1 {

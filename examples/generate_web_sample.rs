@@ -165,6 +165,13 @@ fn sample_order_response(out_amount: u64, slippage_bps: u32, route_input_mint: &
     })
 }
 
+/// Write pretty JSON with a trailing newline, so regenerating the samples is a
+/// no-op in git rather than a one-byte diff on every file.
+fn write_json<T: serde::Serialize>(path: PathBuf, value: &T) -> Result<()> {
+    std::fs::write(path, format!("{}\n", serde_json::to_string_pretty(value)?))?;
+    Ok(())
+}
+
 /// Write context + lineage + verification for one response, with the raw
 /// transaction payload redacted.
 async fn write_case(out_dir: &Path, response: Value, label: &str) -> Result<()> {
@@ -196,25 +203,13 @@ async fn write_case(out_dir: &Path, response: Value, label: &str) -> Result<()> 
     let mut lineage: Value = serde_json::to_value(&result.lineage)?;
     redact_transaction_payload(&mut lineage);
 
-    std::fs::write(
-        out_dir.join("context.json"),
-        serde_json::to_string_pretty(&context)?,
-    )?;
-    std::fs::write(
-        out_dir.join("lineage.json"),
-        serde_json::to_string_pretty(&lineage)?,
-    )?;
-    std::fs::write(
-        out_dir.join("verification.json"),
-        serde_json::to_string_pretty(&report)?,
-    )?;
+    write_json(out_dir.join("context.json"), &context)?;
+    write_json(out_dir.join("lineage.json"), &lineage)?;
+    write_json(out_dir.join("verification.json"), &report)?;
 
     let mut shown_response = response.clone();
     redact_transaction_payload_key(&mut shown_response, "transaction");
-    std::fs::write(
-        out_dir.join("order_response.json"),
-        serde_json::to_string_pretty(&shown_response)?,
-    )?;
+    write_json(out_dir.join("order_response.json"), &shown_response)?;
     let _ = std::fs::remove_dir_all(&scratch);
 
     let s = &report.summary;

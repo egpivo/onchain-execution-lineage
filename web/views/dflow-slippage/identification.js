@@ -18,6 +18,11 @@
 // induced-association arc — is drawn from the model's own collider block, and
 // is styled and labelled as *not* a causal edge. Everything respects
 // prefers-reduced-motion.
+//
+// Below the graph, the same argument is stated formally: a stepper walks
+// `collider.notation_steps` one expression at a time. Those expressions are
+// authored ASCII in the model file, rendered as plain text — no math renderer
+// is loaded for two conditional probabilities.
 
 import { el, note, prose, badge } from "../../components/format.js";
 import { evidence } from "./index.js";

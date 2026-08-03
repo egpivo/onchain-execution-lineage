@@ -161,8 +161,9 @@ category. Old hash paths from the previous navigation
 still resolve to their new destination.
 
 ```bash
-./scripts/build_web.sh                       # regenerate web/samples from Rust
-python3 -m http.server --directory web 8080
+make serve              # http://127.0.0.1:8080 (builds web data first if missing)
+make serve PORT=9000    # another port
+make build-web          # regenerate web/data + web/samples from Rust
 ```
 
 Deep links used by the article:
@@ -286,8 +287,11 @@ classification, or verification outcomes.
 ## Layout
 
 ```text
+Makefile       task shortcuts — `make help` lists them
 src/           library + CLI (see architecture table above)
-web/           static viewer (no build step, no Node)
+web/           static site (no build step, no Node)
+examples/      generates the site's bundled sample via the real pipeline
+scripts/       build_web.sh, reproduce_slippage_article.sh
 tests/         unit/integration tests and public fixtures
 schemas/       machine-readable contracts (not prose docs)
 artifacts/     recorded runs: captures, experiments, lineage, analysis
@@ -309,8 +313,14 @@ artifacts/     recorded runs: captures, experiments, lineage, analysis
 ## Gates
 
 ```bash
+make gates      # fmt --check + clippy -D warnings + test --all
+```
+
+which is:
+
+```bash
 cargo fmt --check
 cargo clippy --all-targets -- -D warnings
 cargo test --all
-cargo test --test live_network -- --ignored   # optional network
+cargo test --test live_network -- --ignored   # optional network, #[ignore] by default
 ```
