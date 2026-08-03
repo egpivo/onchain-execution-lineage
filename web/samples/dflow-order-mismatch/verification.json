@@ -1,0 +1,341 @@
+{
+  "schema_version": "1.0.0",
+  "provider": "dflow",
+  "artifact_id": "dflow_a89daec27de6",
+  "stages_present": [
+    "intent",
+    "provider_response",
+    "route",
+    "transaction_construction"
+  ],
+  "summary": {
+    "pass": 9,
+    "fail": 3,
+    "candidate": 2,
+    "unknown": 1,
+    "not_applicable": 4
+  },
+  "results": [
+    {
+      "check_id": "generic.input_mint_consistency",
+      "status": "FAIL",
+      "stages": [
+        "provider_response",
+        "route"
+      ],
+      "provider": "dflow",
+      "observed": "So11111111111111111111111111111111111111112",
+      "expected": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      "evidence": [
+        "response.input_mint",
+        "route.legs[0].input_mint"
+      ],
+      "explanation": "quoted input_mint does not match route.legs[0].input_mint",
+      "evidence_ceiling": "field-level agreement inside one response body; not on-chain confirmation",
+      "provenance": [
+        "dflow_a89daec27de6"
+      ]
+    },
+    {
+      "check_id": "generic.output_mint_consistency",
+      "status": "PASS",
+      "stages": [
+        "provider_response",
+        "route"
+      ],
+      "provider": "dflow",
+      "observed": "So11111111111111111111111111111111111111112",
+      "expected": "So11111111111111111111111111111111111111112",
+      "evidence": [
+        "response.output_mint",
+        "route.legs[last].output_mint"
+      ],
+      "explanation": "quoted output_mint matches route.legs[last].output_mint",
+      "evidence_ceiling": "field-level agreement inside one response body; not on-chain confirmation",
+      "provenance": [
+        "dflow_a89daec27de6"
+      ]
+    },
+    {
+      "check_id": "generic.input_amount_consistency",
+      "status": "PASS",
+      "stages": [
+        "intent",
+        "provider_response",
+        "route"
+      ],
+      "provider": "dflow",
+      "observed": "100000000",
+      "evidence": [
+        "response.in_amount",
+        "intent.in_amount",
+        "route.legs[0].in_amount"
+      ],
+      "explanation": "input amount agrees across every stage that reports it",
+      "evidence_ceiling": "field-level agreement inside one response body; base-unit strings are compared as integers, never as floats",
+      "provenance": [
+        "dflow_a89daec27de6"
+      ]
+    },
+    {
+      "check_id": "generic.route_presence",
+      "status": "PASS",
+      "stages": [
+        "route"
+      ],
+      "provider": "dflow",
+      "observed": "1 leg(s)",
+      "evidence": [
+        "route.legs[0].venue=SyntheticAmm"
+      ],
+      "explanation": "provider described a route",
+      "evidence_ceiling": "the provider's own account of the route; not on-chain proof of execution",
+      "provenance": [
+        "dflow_a89daec27de6"
+      ]
+    },
+    {
+      "check_id": "generic.transaction_presence",
+      "status": "PASS",
+      "stages": [
+        "transaction_construction"
+      ],
+      "provider": "dflow",
+      "observed": "base64",
+      "explanation": "provider returned an inline unsigned transaction",
+      "evidence_ceiling": "presence of an unsigned payload; nothing about signing or submission",
+      "provenance": [
+        "dflow_a89daec27de6"
+      ]
+    },
+    {
+      "check_id": "generic.transaction_decode",
+      "status": "PASS",
+      "stages": [
+        "transaction_construction"
+      ],
+      "provider": "dflow",
+      "observed": "3 instruction(s), 6 static key(s)",
+      "evidence": [
+        "transaction_sha256=5a7e67055325063ee40f6d52e32985e27a5b9f88b4784320e963ae2c411debb5"
+      ],
+      "explanation": "transaction decoded",
+      "evidence_ceiling": "the bytes parse as a Solana transaction; parsing is not validity",
+      "provenance": [
+        "dflow_a89daec27de6"
+      ]
+    },
+    {
+      "check_id": "dflow.slippage_threshold_arithmetic",
+      "status": "FAIL",
+      "stages": [
+        "provider_response"
+      ],
+      "provider": "dflow",
+      "observed": "999999999",
+      "expected": "1366958642",
+      "evidence": [
+        "out_amount=1373827780",
+        "slippage_bps=50",
+        "other_amount_threshold=999999999",
+        "predicted_ceil=1366958642"
+      ],
+      "explanation": "threshold does not follow the documented slippage identity under either rounding convention",
+      "evidence_ceiling": "response-level arithmetic only: the response is internally consistent. It says nothing about what the transaction enforces on chain.",
+      "provenance": [
+        "dflow_a89daec27de6"
+      ]
+    },
+    {
+      "check_id": "dflow.min_out_matches_threshold",
+      "status": "FAIL",
+      "stages": [
+        "provider_response"
+      ],
+      "provider": "dflow",
+      "observed": "111111111",
+      "expected": "999999999",
+      "explanation": "minOutAmount and otherAmountThreshold disagree; the response describes two different minimums",
+      "evidence_ceiling": "two fields of one response agree; neither is verified against the transaction",
+      "provenance": [
+        "dflow_a89daec27de6"
+      ]
+    },
+    {
+      "check_id": "dflow.platform_fee_accounting",
+      "status": "PASS",
+      "stages": [
+        "provider_response"
+      ],
+      "provider": "dflow",
+      "observed": "0",
+      "expected": "0",
+      "evidence": [
+        "platform_fee.mode=outputMint"
+      ],
+      "explanation": "fee is declared as 0 bps and 0 base units",
+      "evidence_ceiling": "the fee the response declares; realized fees need settlement evidence",
+      "provenance": [
+        "dflow_a89daec27de6"
+      ]
+    },
+    {
+      "check_id": "solana.transaction_version",
+      "status": "PASS",
+      "stages": [
+        "transaction_construction"
+      ],
+      "provider": "dflow",
+      "observed": "v0",
+      "evidence": [
+        "decoder_alt_label=v0_with_alt"
+      ],
+      "explanation": "message version read from the encoded message",
+      "evidence_ceiling": "the encoded version; not a statement about runtime support",
+      "provenance": [
+        "dflow_a89daec27de6"
+      ]
+    },
+    {
+      "check_id": "solana.alt_resolution",
+      "status": "UNKNOWN",
+      "stages": [
+        "transaction_construction"
+      ],
+      "provider": "dflow",
+      "observed": "1 table(s) referenced",
+      "evidence": [
+        "5bV6jUfhDHCQVA1WfKBUnXUsboJgoKgkzkKcxr3joew5"
+      ],
+      "explanation": "lookup tables referenced but resolution was not attempted (offline extraction)",
+      "evidence_ceiling": "table membership is not transaction relevance: only indexed entries are loaded",
+      "provenance": [
+        "dflow_a89daec27de6"
+      ]
+    },
+    {
+      "check_id": "solana.account_index_validity",
+      "status": "PASS",
+      "stages": [
+        "transaction_construction"
+      ],
+      "provider": "dflow",
+      "observed": "max index 6 < vector length 7",
+      "explanation": "every account index resolves inside the loaded account vector",
+      "evidence_ceiling": "structural validity of the compiled message; not a claim that the accounts are the right ones",
+      "provenance": [
+        "dflow_a89daec27de6"
+      ]
+    },
+    {
+      "check_id": "solana.program_presence",
+      "status": "CANDIDATE",
+      "stages": [
+        "transaction_construction"
+      ],
+      "provider": "dflow",
+      "observed": "3 program(s), 1 unlabelled",
+      "evidence": [
+        "11111111111111111111111111111111",
+        "ComputeBudget111111111111111111111111111111",
+        "unlabelled=3JF3sEqM796hk5WFqA6EtmEwJQ9quALszsfJyvXNQKy3"
+      ],
+      "explanation": "some programs are not in the verified registry; they are named, not labelled",
+      "evidence_ceiling": "a program ID appearing in the message; invocation is only observable after settlement",
+      "provenance": [
+        "dflow_a89daec27de6"
+      ]
+    },
+    {
+      "check_id": "solana.transaction_topology",
+      "status": "PASS",
+      "stages": [
+        "transaction_construction"
+      ],
+      "provider": "dflow",
+      "observed": "3 instruction(s), 6 static key(s), 1 table(s), 1 ALT-loaded account(s), vector length 7",
+      "evidence": [
+        "instruction[0].data_len=5",
+        "instruction[1].data_len=56",
+        "instruction[2].data_len=12"
+      ],
+      "explanation": "instruction / account / lookup-table counts recovered from the message",
+      "evidence_ceiling": "shape of the constructed message only",
+      "provenance": [
+        "dflow_a89daec27de6"
+      ]
+    },
+    {
+      "check_id": "solana.candidate_byte_search",
+      "status": "CANDIDATE",
+      "stages": [
+        "provider_response",
+        "transaction_construction"
+      ],
+      "provider": "dflow",
+      "observed": "1/3 value(s) matched",
+      "evidence": [
+        "out_amount=candidate_byte_match [instruction[1]+32,encoding=u32_le,encoding=u64_le]",
+        "other_amount_threshold=not_recoverable []",
+        "in_amount=not_recoverable []"
+      ],
+      "explanation": "at least one response value appears verbatim in instruction bytes",
+      "evidence_ceiling": "byte presence only. A match shows the integer's encoding occurs in a payload; it does not show the program reads it as that quantity. A non-match is not evidence of absence.",
+      "provenance": [
+        "dflow_a89daec27de6"
+      ]
+    },
+    {
+      "check_id": "settlement.landed_status",
+      "status": "NOT_APPLICABLE",
+      "stages": [
+        "settlement"
+      ],
+      "provider": "dflow",
+      "explanation": "artifact is unsigned or unsubmitted; no settlement evidence exists",
+      "evidence_ceiling": "no settlement input means no settlement claim",
+      "provenance": [
+        "dflow_a89daec27de6"
+      ]
+    },
+    {
+      "check_id": "settlement.runtime_program_invocation",
+      "status": "NOT_APPLICABLE",
+      "stages": [
+        "settlement"
+      ],
+      "provider": "dflow",
+      "explanation": "artifact is unsigned or unsubmitted; no settlement evidence exists",
+      "evidence_ceiling": "no settlement input means no settlement claim",
+      "provenance": [
+        "dflow_a89daec27de6"
+      ]
+    },
+    {
+      "check_id": "settlement.realized_output_vs_threshold",
+      "status": "NOT_APPLICABLE",
+      "stages": [
+        "settlement"
+      ],
+      "provider": "dflow",
+      "explanation": "artifact is unsigned or unsubmitted; no settlement evidence exists",
+      "evidence_ceiling": "no settlement input means no settlement claim",
+      "provenance": [
+        "dflow_a89daec27de6"
+      ]
+    },
+    {
+      "check_id": "settlement.fees_and_compute_units",
+      "status": "NOT_APPLICABLE",
+      "stages": [
+        "settlement"
+      ],
+      "provider": "dflow",
+      "explanation": "artifact is unsigned or unsubmitted; no settlement evidence exists",
+      "evidence_ceiling": "no settlement input means no settlement claim",
+      "provenance": [
+        "dflow_a89daec27de6"
+      ]
+    }
+  ]
+}

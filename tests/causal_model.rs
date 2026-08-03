@@ -208,3 +208,64 @@ fn rejected_terminology_stays_rejected() {
         );
     }
 }
+
+/// Selection on an observed route must stay formally distinct from intervening
+/// on route. The published notation steps are the guardrail the identification
+/// view renders; they must stay ASCII-safe and must not equate R = r with do(R).
+#[test]
+fn notation_steps_separate_selection_from_intervention() {
+    let Some(model) = load() else { return };
+    let collider = &model["collider"];
+    let structure = collider["structure"].as_str().unwrap_or_default();
+    assert_eq!(
+        structure, "S -> R <- U",
+        "collider structure must stay ASCII-safe for web/PDF portability"
+    );
+
+    let steps = collider["notation_steps"]
+        .as_array()
+        .expect("notation_steps must be authored on the collider");
+    assert!(
+        steps.len() >= 4,
+        "expected progressive-disclosure steps for the identification view"
+    );
+
+    let mut exprs = Vec::new();
+    for step in steps {
+        for block in step["formulas"].as_array().expect("step formulas") {
+            let expr = block["expr"].as_str().expect("formula expr");
+            let plain = block["plain"].as_str().unwrap_or_default();
+            assert!(
+                !expr.contains('→')
+                    && !expr.contains('←')
+                    && !expr.contains('≠')
+                    && !expr.contains('⟺')
+                    && !expr.contains('⇏'),
+                "formula must stay ASCII-safe: {expr}"
+            );
+            assert!(
+                !plain.is_empty(),
+                "every formal expression needs an adjacent plain-English sentence"
+            );
+            exprs.push(expr.to_string());
+        }
+    }
+
+    let joined = exprs.join("\n");
+    assert!(
+        joined.contains("P(B | do(S), R = r)"),
+        "missing conditioned contrast"
+    );
+    assert!(
+        joined.contains("P(B | do(S), do(R = r))"),
+        "missing intervened-route contrast"
+    );
+    assert!(
+        joined.contains("R = r != do(R = r)"),
+        "missing selection-vs-intervention takeaway"
+    );
+    assert!(
+        !joined.contains("R = r = do(R = r)") && !joined.contains("R = r == do(R = r)"),
+        "R = r must never be treated as equivalent to do(R = r)"
+    );
+}

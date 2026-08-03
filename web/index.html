@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Onchain Execution Lineage</title>
+    <meta
+      name="description"
+      content="A read-only Rust toolkit for reconstructing and verifying execution lineage across provider responses, transaction construction, and settlement."
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#view">Skip to content</a>
+
+    <header class="masthead">
+      <div class="bar">
+        <a class="brand" href="#/">
+          <span class="brand-mark" aria-hidden="true">⌗</span>
+          <span>
+            <strong>Onchain Execution Lineage</strong>
+            <span class="brand-sub">read-only execution verifier · Rust</span>
+          </span>
+        </a>
+        <nav class="nav" id="nav" aria-label="Primary"></nav>
+      </div>
+    </header>
+
+    <main id="view" tabindex="-1">
+      <p class="loading">Loading Rust-generated evidence…</p>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        <p>
+          <strong>Rust decides. This site explains.</strong> Every empirical value
+          shown here was produced by the verifier and can be regenerated from the
+          CLI. No page recomputes a result.
+        </p>
+        <p class="muted">
+          Read-only: no signing, no submission, no simulated fills, no causal
+          inference. Bundled artifacts carry no captured wallet data and no
+          transaction payloads.
+        </p>
+      </div>
+    </footer>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

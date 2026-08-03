@@ -1,0 +1,1196 @@
+{
+  "schema_version": "1.0.0",
+  "experiment_id": "dflow_order_slippage_route_stable_live",
+  "generated_by": "onchain-execution-lineage :: route-bracket",
+  "design": {
+    "bracket_pattern": "A1 / T / A2",
+    "provider": "DFlow developer /order",
+    "read_only": true,
+    "signed": false,
+    "submitted": false
+  },
+  "threshold_identity": {
+    "formula": "M = ceil(Q * (10000 - S) / 10000)",
+    "arithmetic": "exact integer, token base units, no floating point",
+    "observations": 30,
+    "exact_matches": 30,
+    "holds_for_all": true,
+    "floor_variant_matches": 0,
+    "min_out_equals_threshold_all": true,
+    "detail": [
+      {
+        "batch_index": 0,
+        "role": "A1",
+        "slippage_bps": 50,
+        "out_amount": "1373827780",
+        "other_amount_threshold": "1366958642",
+        "predicted_threshold": "1366958642",
+        "exact_match": true,
+        "floor_variant_matches": false,
+        "min_out_equals_threshold": true
+      },
+      {
+        "batch_index": 0,
+        "role": "T",
+        "slippage_bps": 10,
+        "out_amount": "1373855108",
+        "other_amount_threshold": "1372481253",
+        "predicted_threshold": "1372481253",
+        "exact_match": true,
+        "floor_variant_matches": false,
+        "min_out_equals_threshold": true
+      },
+      {
+        "batch_index": 0,
+        "role": "A2",
+        "slippage_bps": 50,
+        "out_amount": "1373689989",
+        "other_amount_threshold": "1366821540",
+        "predicted_threshold": "1366821540",
+        "exact_match": true,
+        "floor_variant_matches": false,
+        "min_out_equals_threshold": true
+      },
+      {
+        "batch_index": 1,
+        "role": "A1",
+        "slippage_bps": 50,
+        "out_amount": "1373713837",
+        "other_amount_threshold": "1366845268",
+        "predicted_threshold": "1366845268",
+        "exact_match": true,
+        "floor_variant_matches": false,
+        "min_out_equals_threshold": true
+      },
+      {
+        "batch_index": 1,
+        "role": "T",
+        "slippage_bps": 100,
+        "out_amount": "1374116442",
+        "other_amount_threshold": "1360375278",
+        "predicted_threshold": "1360375278",
+        "exact_match": true,
+        "floor_variant_matches": false,
+        "min_out_equals_threshold": true
+      },
+      {
+        "batch_index": 1,
+        "role": "A2",
+        "slippage_bps": 50,
+        "out_amount": "1374161575",
+        "other_amount_threshold": "1367290768",
+        "predicted_threshold": "1367290768",
+        "exact_match": true,
+        "floor_variant_matches": false,
+        "min_out_equals_threshold": true
+      },
+      {
+        "batch_index": 2,
+        "role": "A1",
+        "slippage_bps": 50,
+        "out_amount": "1374121166",
+        "other_amount_threshold": "1367250561",
+        "predicted_threshold": "1367250561",
+        "exact_match": true,
+        "floor_variant_matches": false,
+        "min_out_equals_threshold": true
+      },
+      {
+        "batch_index": 2,
+        "role": "T",
+        "slippage_bps": 10,
+        "out_amount": "1374138965",
+        "other_amount_threshold": "1372764827",
+        "predicted_threshold": "1372764827",
+        "exact_match": true,
+        "floor_variant_matches": false,
+        "min_out_equals_threshold": true
+      },
+      {
+        "batch_index": 2,
+        "role": "A2",
+        "slippage_bps": 50,
+        "out_amount": "1374130348",
+        "other_amount_threshold": "1367259697",
+        "predicted_threshold": "1367259697",
+        "exact_match": true,
+        "floor_variant_matches": false,
+        "min_out_equals_threshold": true
+      },
+      {
+        "batch_index": 3,
+        "role": "A1",
+        "slippage_bps": 50,
+        "out_amount": "1374157665",
+        "other_amount_threshold": "1367286877",
+        "predicted_threshold": "1367286877",
+        "exact_match": true,
+        "floor_variant_matches": false,
+        "min_out_equals_threshold": true
+      },
+      {
+        "batch_index": 3,
+        "role": "T",
+        "slippage_bps": 100,
+        "out_amount": "1374155429",
+        "other_amount_threshold": "1360413875",
+        "predicted_threshold": "1360413875",
+        "exact_match": true,
+        "floor_variant_matches": false,
+        "min_out_equals_threshold": true
+      },
+      {
+        "batch_index": 3,
+        "role": "A2",
+        "slippage_bps": 50,
+        "out_amount": "1374155537",
+        "other_amount_threshold": "1367284760",
+        "predicted_threshold": "1367284760",
+        "exact_match": true,
+        "floor_variant_matches": false,
+        "min_out_equals_threshold": true
+      },
+      {
+        "batch_index": 4,
+        "role": "A1",
+        "slippage_bps": 50,
+        "out_amount": "1374113097",
+        "other_amount_threshold": "1367242532",
+        "predicted_threshold": "1367242532",
+        "exact_match": true,
+        "floor_variant_matches": false,
+        "min_out_equals_threshold": true
+      },
+      {
+        "batch_index": 4,
+        "role": "T",
+        "slippage_bps": 10,
+        "out_amount": "1373926468",
+        "other_amount_threshold": "1372552542",
+        "predicted_threshold": "1372552542",
+        "exact_match": true,
+        "floor_variant_matches": false,
+        "min_out_equals_threshold": true
+      },
+      {
+        "batch_index": 4,
+        "role": "A2",
+        "slippage_bps": 50,
+        "out_amount": "1373924177",
+        "other_amount_threshold": "1367054557",
+        "predicted_threshold": "1367054557",
+        "exact_match": true,
+        "floor_variant_matches": false,
+        "min_out_equals_threshold": true
+      },
+      {
+        "batch_index": 5,
+        "role": "A1",
+        "slippage_bps": 50,
+        "out_amount": "1374111914",
+        "other_amount_threshold": "1367241355",
+        "predicted_threshold": "1367241355",
+        "exact_match": true,
+        "floor_variant_matches": false,
+        "min_out_equals_threshold": true
+      },
+      {
+        "batch_index": 5,
+        "role": "T",
+        "slippage_bps": 100,
+        "out_amount": "1374103241",
+        "other_amount_threshold": "1360362209",
+        "predicted_threshold": "1360362209",
+        "exact_match": true,
+        "floor_variant_matches": false,
+        "min_out_equals_threshold": true
+      },
+      {
+        "batch_index": 5,
+        "role": "A2",
+        "slippage_bps": 50,
+        "out_amount": "1374096116",
+        "other_amount_threshold": "1367225636",
+        "predicted_threshold": "1367225636",
+        "exact_match": true,
+        "floor_variant_matches": false,
+        "min_out_equals_threshold": true
+      },
+      {
+        "batch_index": 6,
+        "role": "A1",
+        "slippage_bps": 50,
+        "out_amount": "1374101048",
+        "other_amount_threshold": "1367230543",
+        "predicted_threshold": "1367230543",
+        "exact_match": true,
+        "floor_variant_matches": false,
+        "min_out_equals_threshold": true
+      },
+      {
+        "batch_index": 6,
+        "role": "T",
+        "slippage_bps": 10,
+        "out_amount": "1374123303",
+        "other_amount_threshold": "1372749180",
+        "predicted_threshold": "1372749180",
+        "exact_match": true,
+        "floor_variant_matches": false,
+        "min_out_equals_threshold": true
+      },
+      {
+        "batch_index": 6,
+        "role": "A2",
+        "slippage_bps": 50,
+        "out_amount": "1374066997",
+        "other_amount_threshold": "1367196663",
+        "predicted_threshold": "1367196663",
+        "exact_match": true,
+        "floor_variant_matches": false,
+        "min_out_equals_threshold": true
+      },
+      {
+        "batch_index": 7,
+        "role": "A1",
+        "slippage_bps": 50,
+        "out_amount": "1374066558",
+        "other_amount_threshold": "1367196226",
+        "predicted_threshold": "1367196226",
+        "exact_match": true,
+        "floor_variant_matches": false,
+        "min_out_equals_threshold": true
+      },
+      {
+        "batch_index": 7,
+        "role": "T",
+        "slippage_bps": 100,
+        "out_amount": "1374079866",
+        "other_amount_threshold": "1360339068",
+        "predicted_threshold": "1360339068",
+        "exact_match": true,
+        "floor_variant_matches": false,
+        "min_out_equals_threshold": true
+      },
+      {
+        "batch_index": 7,
+        "role": "A2",
+        "slippage_bps": 50,
+        "out_amount": "1374075026",
+        "other_amount_threshold": "1367204651",
+        "predicted_threshold": "1367204651",
+        "exact_match": true,
+        "floor_variant_matches": false,
+        "min_out_equals_threshold": true
+      },
+      {
+        "batch_index": 8,
+        "role": "A1",
+        "slippage_bps": 50,
+        "out_amount": "1374149067",
+        "other_amount_threshold": "1367278322",
+        "predicted_threshold": "1367278322",
+        "exact_match": true,
+        "floor_variant_matches": false,
+        "min_out_equals_threshold": true
+      },
+      {
+        "batch_index": 8,
+        "role": "T",
+        "slippage_bps": 10,
+        "out_amount": "1374039433",
+        "other_amount_threshold": "1372665394",
+        "predicted_threshold": "1372665394",
+        "exact_match": true,
+        "floor_variant_matches": false,
+        "min_out_equals_threshold": true
+      },
+      {
+        "batch_index": 8,
+        "role": "A2",
+        "slippage_bps": 50,
+        "out_amount": "1374098984",
+        "other_amount_threshold": "1367228490",
+        "predicted_threshold": "1367228490",
+        "exact_match": true,
+        "floor_variant_matches": false,
+        "min_out_equals_threshold": true
+      },
+      {
+        "batch_index": 9,
+        "role": "A1",
+        "slippage_bps": 50,
+        "out_amount": "1374061953",
+        "other_amount_threshold": "1367191644",
+        "predicted_threshold": "1367191644",
+        "exact_match": true,
+        "floor_variant_matches": false,
+        "min_out_equals_threshold": true
+      },
+      {
+        "batch_index": 9,
+        "role": "T",
+        "slippage_bps": 100,
+        "out_amount": "1374060385",
+        "other_amount_threshold": "1360319782",
+        "predicted_threshold": "1360319782",
+        "exact_match": true,
+        "floor_variant_matches": false,
+        "min_out_equals_threshold": true
+      },
+      {
+        "batch_index": 9,
+        "role": "A2",
+        "slippage_bps": 50,
+        "out_amount": "1374070858",
+        "other_amount_threshold": "1367200504",
+        "predicted_threshold": "1367200504",
+        "exact_match": true,
+        "floor_variant_matches": false,
+        "min_out_equals_threshold": true
+      }
+    ]
+  },
+  "eligible_batches": [
+    1,
+    2,
+    5,
+    8,
+    9
+  ],
+  "eligible_batch_count": 5,
+  "total_batches": 10,
+  "total_requests": 30,
+  "candidate_result": {
+    "searched_quantities": [
+      "otherAmountThreshold",
+      "outAmount",
+      "outAmount_minus_threshold"
+    ],
+    "target_quantity": "otherAmountThreshold",
+    "transactions_searched": 15,
+    "searched_every_instruction": true,
+    "encoding_family": [
+      "u64_le",
+      "u64_be",
+      "u32_le",
+      "u32_be"
+    ],
+    "quote_matched_in_all": true,
+    "quote_site_unique_in_all": true,
+    "quote_sites": [
+      {
+        "instruction_index": 2,
+        "byte_offset": 99
+      }
+    ],
+    "threshold_sites_total": 0,
+    "difference_sites_total": 0,
+    "canonical_encoding": "8-byte little-endian",
+    "canonical_note": "The matched bytes are an 8-byte little-endian integer whose top four bytes are zero, because every observed amount is below 2^32. A 4-byte read of the same offset therefore also matches: the same physical bytes, not a second finding.",
+    "evidence_ceiling": "Byte equality under one encoding family. Not semantic decoding: no IDL, no official decoder, no protocol schema was used. An empty threshold result means not recovered under this search, not absent from the transaction."
+  },
+  "per_request_search": [
+    {
+      "batch_index": 1,
+      "role": "A1",
+      "slippage_bps": 50,
+      "out_amount": "1373713837",
+      "other_amount_threshold": "1366845268",
+      "instruction_count": 4,
+      "payload_lengths": [
+        5,
+        9,
+        111,
+        8
+      ],
+      "sites": [
+        [
+          "otherAmountThreshold",
+          []
+        ],
+        [
+          "outAmount",
+          [
+            {
+              "instruction_index": 2,
+              "byte_offset": 99
+            }
+          ]
+        ],
+        [
+          "outAmount_minus_threshold",
+          []
+        ]
+      ],
+      "encodings_hit": [
+        [
+          "otherAmountThreshold",
+          []
+        ],
+        [
+          "outAmount",
+          [
+            "u32_le",
+            "u64_le"
+          ]
+        ],
+        [
+          "outAmount_minus_threshold",
+          []
+        ]
+      ]
+    },
+    {
+      "batch_index": 1,
+      "role": "T",
+      "slippage_bps": 100,
+      "out_amount": "1374116442",
+      "other_amount_threshold": "1360375278",
+      "instruction_count": 4,
+      "payload_lengths": [
+        5,
+        9,
+        111,
+        8
+      ],
+      "sites": [
+        [
+          "otherAmountThreshold",
+          []
+        ],
+        [
+          "outAmount",
+          [
+            {
+              "instruction_index": 2,
+              "byte_offset": 99
+            }
+          ]
+        ],
+        [
+          "outAmount_minus_threshold",
+          []
+        ]
+      ],
+      "encodings_hit": [
+        [
+          "otherAmountThreshold",
+          []
+        ],
+        [
+          "outAmount",
+          [
+            "u32_le",
+            "u64_le"
+          ]
+        ],
+        [
+          "outAmount_minus_threshold",
+          []
+        ]
+      ]
+    },
+    {
+      "batch_index": 1,
+      "role": "A2",
+      "slippage_bps": 50,
+      "out_amount": "1374161575",
+      "other_amount_threshold": "1367290768",
+      "instruction_count": 4,
+      "payload_lengths": [
+        5,
+        9,
+        111,
+        8
+      ],
+      "sites": [
+        [
+          "otherAmountThreshold",
+          []
+        ],
+        [
+          "outAmount",
+          [
+            {
+              "instruction_index": 2,
+              "byte_offset": 99
+            }
+          ]
+        ],
+        [
+          "outAmount_minus_threshold",
+          []
+        ]
+      ],
+      "encodings_hit": [
+        [
+          "otherAmountThreshold",
+          []
+        ],
+        [
+          "outAmount",
+          [
+            "u32_le",
+            "u64_le"
+          ]
+        ],
+        [
+          "outAmount_minus_threshold",
+          []
+        ]
+      ]
+    },
+    {
+      "batch_index": 2,
+      "role": "A1",
+      "slippage_bps": 50,
+      "out_amount": "1374121166",
+      "other_amount_threshold": "1367250561",
+      "instruction_count": 4,
+      "payload_lengths": [
+        5,
+        9,
+        111,
+        8
+      ],
+      "sites": [
+        [
+          "otherAmountThreshold",
+          []
+        ],
+        [
+          "outAmount",
+          [
+            {
+              "instruction_index": 2,
+              "byte_offset": 99
+            }
+          ]
+        ],
+        [
+          "outAmount_minus_threshold",
+          []
+        ]
+      ],
+      "encodings_hit": [
+        [
+          "otherAmountThreshold",
+          []
+        ],
+        [
+          "outAmount",
+          [
+            "u32_le",
+            "u64_le"
+          ]
+        ],
+        [
+          "outAmount_minus_threshold",
+          []
+        ]
+      ]
+    },
+    {
+      "batch_index": 2,
+      "role": "T",
+      "slippage_bps": 10,
+      "out_amount": "1374138965",
+      "other_amount_threshold": "1372764827",
+      "instruction_count": 4,
+      "payload_lengths": [
+        5,
+        9,
+        111,
+        8
+      ],
+      "sites": [
+        [
+          "otherAmountThreshold",
+          []
+        ],
+        [
+          "outAmount",
+          [
+            {
+              "instruction_index": 2,
+              "byte_offset": 99
+            }
+          ]
+        ],
+        [
+          "outAmount_minus_threshold",
+          []
+        ]
+      ],
+      "encodings_hit": [
+        [
+          "otherAmountThreshold",
+          []
+        ],
+        [
+          "outAmount",
+          [
+            "u32_le",
+            "u64_le"
+          ]
+        ],
+        [
+          "outAmount_minus_threshold",
+          []
+        ]
+      ]
+    },
+    {
+      "batch_index": 2,
+      "role": "A2",
+      "slippage_bps": 50,
+      "out_amount": "1374130348",
+      "other_amount_threshold": "1367259697",
+      "instruction_count": 4,
+      "payload_lengths": [
+        5,
+        9,
+        111,
+        8
+      ],
+      "sites": [
+        [
+          "otherAmountThreshold",
+          []
+        ],
+        [
+          "outAmount",
+          [
+            {
+              "instruction_index": 2,
+              "byte_offset": 99
+            }
+          ]
+        ],
+        [
+          "outAmount_minus_threshold",
+          []
+        ]
+      ],
+      "encodings_hit": [
+        [
+          "otherAmountThreshold",
+          []
+        ],
+        [
+          "outAmount",
+          [
+            "u32_le",
+            "u64_le"
+          ]
+        ],
+        [
+          "outAmount_minus_threshold",
+          []
+        ]
+      ]
+    },
+    {
+      "batch_index": 5,
+      "role": "A1",
+      "slippage_bps": 50,
+      "out_amount": "1374111914",
+      "other_amount_threshold": "1367241355",
+      "instruction_count": 4,
+      "payload_lengths": [
+        5,
+        9,
+        111,
+        8
+      ],
+      "sites": [
+        [
+          "otherAmountThreshold",
+          []
+        ],
+        [
+          "outAmount",
+          [
+            {
+              "instruction_index": 2,
+              "byte_offset": 99
+            }
+          ]
+        ],
+        [
+          "outAmount_minus_threshold",
+          []
+        ]
+      ],
+      "encodings_hit": [
+        [
+          "otherAmountThreshold",
+          []
+        ],
+        [
+          "outAmount",
+          [
+            "u32_le",
+            "u64_le"
+          ]
+        ],
+        [
+          "outAmount_minus_threshold",
+          []
+        ]
+      ]
+    },
+    {
+      "batch_index": 5,
+      "role": "T",
+      "slippage_bps": 100,
+      "out_amount": "1374103241",
+      "other_amount_threshold": "1360362209",
+      "instruction_count": 4,
+      "payload_lengths": [
+        5,
+        9,
+        111,
+        8
+      ],
+      "sites": [
+        [
+          "otherAmountThreshold",
+          []
+        ],
+        [
+          "outAmount",
+          [
+            {
+              "instruction_index": 2,
+              "byte_offset": 99
+            }
+          ]
+        ],
+        [
+          "outAmount_minus_threshold",
+          []
+        ]
+      ],
+      "encodings_hit": [
+        [
+          "otherAmountThreshold",
+          []
+        ],
+        [
+          "outAmount",
+          [
+            "u32_le",
+            "u64_le"
+          ]
+        ],
+        [
+          "outAmount_minus_threshold",
+          []
+        ]
+      ]
+    },
+    {
+      "batch_index": 5,
+      "role": "A2",
+      "slippage_bps": 50,
+      "out_amount": "1374096116",
+      "other_amount_threshold": "1367225636",
+      "instruction_count": 4,
+      "payload_lengths": [
+        5,
+        9,
+        111,
+        8
+      ],
+      "sites": [
+        [
+          "otherAmountThreshold",
+          []
+        ],
+        [
+          "outAmount",
+          [
+            {
+              "instruction_index": 2,
+              "byte_offset": 99
+            }
+          ]
+        ],
+        [
+          "outAmount_minus_threshold",
+          []
+        ]
+      ],
+      "encodings_hit": [
+        [
+          "otherAmountThreshold",
+          []
+        ],
+        [
+          "outAmount",
+          [
+            "u32_le",
+            "u64_le"
+          ]
+        ],
+        [
+          "outAmount_minus_threshold",
+          []
+        ]
+      ]
+    },
+    {
+      "batch_index": 8,
+      "role": "A1",
+      "slippage_bps": 50,
+      "out_amount": "1374149067",
+      "other_amount_threshold": "1367278322",
+      "instruction_count": 4,
+      "payload_lengths": [
+        5,
+        9,
+        111,
+        8
+      ],
+      "sites": [
+        [
+          "otherAmountThreshold",
+          []
+        ],
+        [
+          "outAmount",
+          [
+            {
+              "instruction_index": 2,
+              "byte_offset": 99
+            }
+          ]
+        ],
+        [
+          "outAmount_minus_threshold",
+          []
+        ]
+      ],
+      "encodings_hit": [
+        [
+          "otherAmountThreshold",
+          []
+        ],
+        [
+          "outAmount",
+          [
+            "u32_le",
+            "u64_le"
+          ]
+        ],
+        [
+          "outAmount_minus_threshold",
+          []
+        ]
+      ]
+    },
+    {
+      "batch_index": 8,
+      "role": "T",
+      "slippage_bps": 10,
+      "out_amount": "1374039433",
+      "other_amount_threshold": "1372665394",
+      "instruction_count": 4,
+      "payload_lengths": [
+        5,
+        9,
+        111,
+        8
+      ],
+      "sites": [
+        [
+          "otherAmountThreshold",
+          []
+        ],
+        [
+          "outAmount",
+          [
+            {
+              "instruction_index": 2,
+              "byte_offset": 99
+            }
+          ]
+        ],
+        [
+          "outAmount_minus_threshold",
+          []
+        ]
+      ],
+      "encodings_hit": [
+        [
+          "otherAmountThreshold",
+          []
+        ],
+        [
+          "outAmount",
+          [
+            "u32_le",
+            "u64_le"
+          ]
+        ],
+        [
+          "outAmount_minus_threshold",
+          []
+        ]
+      ]
+    },
+    {
+      "batch_index": 8,
+      "role": "A2",
+      "slippage_bps": 50,
+      "out_amount": "1374098984",
+      "other_amount_threshold": "1367228490",
+      "instruction_count": 4,
+      "payload_lengths": [
+        5,
+        9,
+        111,
+        8
+      ],
+      "sites": [
+        [
+          "otherAmountThreshold",
+          []
+        ],
+        [
+          "outAmount",
+          [
+            {
+              "instruction_index": 2,
+              "byte_offset": 99
+            }
+          ]
+        ],
+        [
+          "outAmount_minus_threshold",
+          []
+        ]
+      ],
+      "encodings_hit": [
+        [
+          "otherAmountThreshold",
+          []
+        ],
+        [
+          "outAmount",
+          [
+            "u32_le",
+            "u64_le"
+          ]
+        ],
+        [
+          "outAmount_minus_threshold",
+          []
+        ]
+      ]
+    },
+    {
+      "batch_index": 9,
+      "role": "A1",
+      "slippage_bps": 50,
+      "out_amount": "1374061953",
+      "other_amount_threshold": "1367191644",
+      "instruction_count": 4,
+      "payload_lengths": [
+        5,
+        9,
+        111,
+        8
+      ],
+      "sites": [
+        [
+          "otherAmountThreshold",
+          []
+        ],
+        [
+          "outAmount",
+          [
+            {
+              "instruction_index": 2,
+              "byte_offset": 99
+            }
+          ]
+        ],
+        [
+          "outAmount_minus_threshold",
+          []
+        ]
+      ],
+      "encodings_hit": [
+        [
+          "otherAmountThreshold",
+          []
+        ],
+        [
+          "outAmount",
+          [
+            "u32_le",
+            "u64_le"
+          ]
+        ],
+        [
+          "outAmount_minus_threshold",
+          []
+        ]
+      ]
+    },
+    {
+      "batch_index": 9,
+      "role": "T",
+      "slippage_bps": 100,
+      "out_amount": "1374060385",
+      "other_amount_threshold": "1360319782",
+      "instruction_count": 4,
+      "payload_lengths": [
+        5,
+        9,
+        111,
+        8
+      ],
+      "sites": [
+        [
+          "otherAmountThreshold",
+          []
+        ],
+        [
+          "outAmount",
+          [
+            {
+              "instruction_index": 2,
+              "byte_offset": 99
+            }
+          ]
+        ],
+        [
+          "outAmount_minus_threshold",
+          []
+        ]
+      ],
+      "encodings_hit": [
+        [
+          "otherAmountThreshold",
+          []
+        ],
+        [
+          "outAmount",
+          [
+            "u32_le",
+            "u64_le"
+          ]
+        ],
+        [
+          "outAmount_minus_threshold",
+          []
+        ]
+      ]
+    },
+    {
+      "batch_index": 9,
+      "role": "A2",
+      "slippage_bps": 50,
+      "out_amount": "1374070858",
+      "other_amount_threshold": "1367200504",
+      "instruction_count": 4,
+      "payload_lengths": [
+        5,
+        9,
+        111,
+        8
+      ],
+      "sites": [
+        [
+          "otherAmountThreshold",
+          []
+        ],
+        [
+          "outAmount",
+          [
+            {
+              "instruction_index": 2,
+              "byte_offset": 99
+            }
+          ]
+        ],
+        [
+          "outAmount_minus_threshold",
+          []
+        ]
+      ],
+      "encodings_hit": [
+        [
+          "otherAmountThreshold",
+          []
+        ],
+        [
+          "outAmount",
+          [
+            "u32_le",
+            "u64_le"
+          ]
+        ],
+        [
+          "outAmount_minus_threshold",
+          []
+        ]
+      ]
+    }
+  ],
+  "anchor_control": [
+    {
+      "batch_index": 1,
+      "slippage_bps": 50,
+      "q_a1": "1373713837",
+      "q_a2": "1374161575",
+      "quote_differs": true,
+      "candidate_carries_own_quote": true,
+      "route_same": true,
+      "topology_same": true
+    },
+    {
+      "batch_index": 2,
+      "slippage_bps": 50,
+      "q_a1": "1374121166",
+      "q_a2": "1374130348",
+      "quote_differs": true,
+      "candidate_carries_own_quote": true,
+      "route_same": true,
+      "topology_same": true
+    },
+    {
+      "batch_index": 5,
+      "slippage_bps": 50,
+      "q_a1": "1374111914",
+      "q_a2": "1374096116",
+      "quote_differs": true,
+      "candidate_carries_own_quote": true,
+      "route_same": true,
+      "topology_same": true
+    },
+    {
+      "batch_index": 8,
+      "slippage_bps": 50,
+      "q_a1": "1374149067",
+      "q_a2": "1374098984",
+      "quote_differs": true,
+      "candidate_carries_own_quote": true,
+      "route_same": true,
+      "topology_same": true
+    },
+    {
+      "batch_index": 9,
+      "slippage_bps": 50,
+      "q_a1": "1374061953",
+      "q_a2": "1374070858",
+      "quote_differs": true,
+      "candidate_carries_own_quote": true,
+      "route_same": true,
+      "topology_same": true
+    }
+  ]
+}

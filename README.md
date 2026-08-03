@@ -14,6 +14,18 @@ construction, and settlement.**
 The tool does **not** sign or submit transactions, does **not** simulate fills,
 and does **not** infer causal effects.
 
+**[Open the project site →](https://egpivo.github.io/onchain-execution-lineage/)** — overview, use cases, architecture, reference, and an execution-lineage viewer.
+
+| Layer | Role |
+|---|---|
+| CLI / Rust | extracts and verifies execution evidence |
+| Web site | renders Rust-generated lineage, verification results and use cases |
+| Reference case | DFlow slippage-threshold experiment |
+
+The viewer is a rendering layer. It is not where empirical results come from —
+every value it shows was decided by the Rust pipeline and can be regenerated
+from the CLI.
+
 ## Canonical lineage construction
 
 There is exactly one path that creates a `LineageBundle`. Everything else
@@ -139,6 +151,48 @@ with no Python, no frontend and no network step. Both modes are orchestration
 only: every value, comparison and verdict lives in `src/reference_case.rs` and
 is asserted by Rust tests.
 
+### Project site
+
+A static site over Rust-generated artifacts. Primary navigation is exactly
+Home / Explore / Docs / GitHub — Architecture and Reference live under Docs,
+and loading your own lineage is a task CTA ("Inspect lineage JSON"), not a nav
+category. Old hash paths from the previous navigation
+(`#/overview`, `#/use-cases/…`, `#/architecture`, `#/reference`, `#/load`)
+still resolve to their new destination.
+
+```bash
+./scripts/build_web.sh                       # regenerate web/samples from Rust
+python3 -m http.server --directory web 8080
+```
+
+Deep links used by the article:
+
+| Route | Shows |
+|---|---|
+| `#/` | home: what the tool does, a minimal execution path, one real example |
+| `#/explore` | the use-case collection |
+| `#/explore/dflow-slippage` | reference-case overview |
+| `#/explore/dflow-slippage/threshold` | S, Q, M per request and the verified identity |
+| `#/explore/dflow-slippage/route?batch=6` | A1 → T → A2 for one bracket, with eligibility |
+| `#/explore/dflow-slippage/identification` | the frozen structural model |
+| `#/explore/dflow-slippage/bytes?batch=1` | M / Q / Q−M candidate-search results |
+| `#/explore/dflow-slippage/reproduce` | the two reproducibility modes |
+| `#/docs` | quick start, how it works, links to architecture/reference |
+| `#/docs/architecture`, `#/docs/reference` | software documentation |
+| `#/inspect` | load your own CLI output, browser-local |
+
+To inspect your own run, produce artifacts with the CLI and drop them onto
+`#/inspect` — the File API reads them in the tab and nothing is uploaded:
+
+```bash
+onchain-execution-lineage extract --provider dflow --response capture.json --out-dir ./my-lineage
+onchain-execution-lineage verify  --lineage ./my-lineage --out-json ./my-lineage/verification.json
+```
+
+Bundled samples are synthetic responses run through the real pipeline; the
+genuine DFlow reference lineage is not published because its context embeds the
+requester's wallet pubkey.
+
 ### DFlow reference artifact
 
 A single recorded DFlow `/order` response through the canonical pipeline
@@ -233,6 +287,7 @@ classification, or verification outcomes.
 
 ```text
 src/           library + CLI (see architecture table above)
+web/           static viewer (no build step, no Node)
 tests/         unit/integration tests and public fixtures
 schemas/       machine-readable contracts (not prose docs)
 artifacts/     recorded runs: captures, experiments, lineage, analysis
