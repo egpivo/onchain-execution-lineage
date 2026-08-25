@@ -454,7 +454,7 @@ pub fn search_candidate_encodings_in_payload(
     Ok(hits)
 }
 
-fn amount_needles(amount: u128) -> Vec<(usize, Vec<u8>, &'static str)> {
+pub(crate) fn amount_needles(amount: u128) -> Vec<(usize, Vec<u8>, &'static str)> {
     let mut out = Vec::new();
     if amount <= u64::MAX as u128 {
         let v = amount as u64;
@@ -647,6 +647,24 @@ fn le_encodings(amount: u128) -> Vec<(usize, Vec<u8>)> {
     out.push((16, amount.to_le_bytes().to_vec()));
     if amount <= u32::MAX as u128 {
         out.push((4, (amount as u32).to_le_bytes().to_vec()));
+    }
+    out
+}
+
+/// Every offset where `needle` occurs, not just the first.
+///
+/// The bracket report only needs the first hit inside a changed range; the
+/// public evidence extract needs all of them, because "the match is unique
+/// within this payload" is itself a published claim.
+pub(crate) fn find_all_subslices(hay: &[u8], needle: &[u8]) -> Vec<usize> {
+    let mut out = Vec::new();
+    if needle.is_empty() || hay.len() < needle.len() {
+        return out;
+    }
+    for start in 0..=(hay.len() - needle.len()) {
+        if &hay[start..start + needle.len()] == needle {
+            out.push(start);
+        }
     }
     out
 }

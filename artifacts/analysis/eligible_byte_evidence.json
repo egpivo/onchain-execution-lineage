@@ -1,0 +1,98 @@
+{
+  "schema_version": "1.0.0",
+  "experiment_id": "dflow_order_slippage_route_stable_live",
+  "source": {
+    "generator": "analysis/analyze_eligible_bracket_bytes.py",
+    "note": "Independent decode and search over every instruction payload of every request in the eligible brackets. Distinct from the Rust runner's A1-vs-T changed-instruction search."
+  },
+  "scope": {
+    "eligible_batches": [
+      1,
+      2,
+      5,
+      8,
+      9
+    ],
+    "transactions_searched": 15,
+    "instructions_per_transaction": 4,
+    "searched_every_instruction": true,
+    "encoding_family": [
+      "u64_le",
+      "u64_be",
+      "u32_le",
+      "u32_be"
+    ]
+  },
+  "candidate_result": {
+    "quote_matched_in_all": true,
+    "quote_site_unique_in_all": true,
+    "quote_sites": [
+      {
+        "instruction_index": 2,
+        "byte_offset": 99
+      }
+    ],
+    "threshold_sites_total": 0,
+    "difference_sites_total": 0,
+    "canonical_encoding": "8-byte little-endian",
+    "canonical_note": "The matched bytes are an 8-byte little-endian integer whose top four bytes are zero, because every observed amount is below 2^32. A 4-byte read of the same offset therefore also matches: the same physical bytes, not a second finding.",
+    "evidence_ceiling": "Byte equality under one encoding family. Not semantic decoding: no IDL, no official decoder, no protocol schema was used. An empty threshold result means not recovered under this search, not absent from the transaction."
+  },
+  "anchor_control": {
+    "description": "A1 and A2 share the 50 bps anchor, so the slippage contrast is zero. The control asks whether the recurring position still carries each response's own quoted amount.",
+    "pairs": [
+      {
+        "batch_index": 1,
+        "slippage_bps": 50,
+        "q_a1": "1373713837",
+        "q_a2": "1374161575",
+        "quote_differs": true,
+        "candidate_carries_own_quote": true,
+        "route_same": true,
+        "topology_same": true
+      },
+      {
+        "batch_index": 2,
+        "slippage_bps": 50,
+        "q_a1": "1374121166",
+        "q_a2": "1374130348",
+        "quote_differs": true,
+        "candidate_carries_own_quote": true,
+        "route_same": true,
+        "topology_same": true
+      },
+      {
+        "batch_index": 5,
+        "slippage_bps": 50,
+        "q_a1": "1374111914",
+        "q_a2": "1374096116",
+        "quote_differs": true,
+        "candidate_carries_own_quote": true,
+        "route_same": true,
+        "topology_same": true
+      },
+      {
+        "batch_index": 8,
+        "slippage_bps": 50,
+        "q_a1": "1374149067",
+        "q_a2": "1374098984",
+        "quote_differs": true,
+        "candidate_carries_own_quote": true,
+        "route_same": true,
+        "topology_same": true
+      },
+      {
+        "batch_index": 9,
+        "slippage_bps": 50,
+        "q_a1": "1374061953",
+        "q_a2": "1374070858",
+        "quote_differs": true,
+        "candidate_carries_own_quote": true,
+        "route_same": true,
+        "topology_same": true
+      }
+    ],
+    "pairs_with_differing_quote": 5,
+    "pairs_candidate_tracks_quote": 5
+  }
+}

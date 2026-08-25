@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 use crate::evidence::{AttributionClaim, EvidenceLevel, UnresolvedField, LINEAGE_SCHEMA_VERSION};
+use crate::execution_context::Stage;
 use crate::transaction::DecodedTransaction;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -92,6 +93,68 @@ pub struct SettlementObservation {
     pub notes: Vec<String>,
 }
 
+/// A relationship observed *between* two stages.
+///
+/// Links are the cross-layer part of the lineage: "the mint the caller asked
+/// for is the mint the quote priced", "this quoted value appears as bytes in
+/// this instruction". Every link carries its evidence level and an explicit
+/// claim ceiling, because a numeric coincidence is not a semantic fact — a
+/// byte match says the value is present, never that the program reads it as
+/// that quantity.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LineageLink {
+    pub id: String,
+    pub from_stage: Stage,
+    pub to_stage: Stage,
+    /// `same_value`, `value_mismatch`, `candidate_byte_match`, `derived_from`,
+    /// `not_recoverable`.
+    pub relationship: String,
+    pub subject: String,
+    pub object: String,
+    pub evidence_level: EvidenceLevel,
+    /// The strongest thing this link is allowed to support.
+    pub claim_ceiling: String,
+    pub explanation: String,
+    /// Provenance references: field paths, instruction indexes, artifact ids.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub evidence: Vec<String>,
+}
+
+impl LineageLink {
+    // A link is nine facts, and naming each one at the call site is what keeps
+    // the claim ceiling from being forgotten. A builder would hide that.
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        id: impl Into<String>,
+        from_stage: Stage,
+        to_stage: Stage,
+        relationship: impl Into<String>,
+        subject: impl Into<String>,
+        object: impl Into<String>,
+        evidence_level: EvidenceLevel,
+        claim_ceiling: impl Into<String>,
+        explanation: impl Into<String>,
+    ) -> Self {
+        Self {
+            id: id.into(),
+            from_stage,
+            to_stage,
+            relationship: relationship.into(),
+            subject: subject.into(),
+            object: object.into(),
+            evidence_level,
+            claim_ceiling: claim_ceiling.into(),
+            explanation: explanation.into(),
+            evidence: Vec::new(),
+        }
+    }
+
+    pub fn with_evidence(mut self, evidence: impl IntoIterator<Item = String>) -> Self {
+        self.evidence.extend(evidence);
+        self
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LineageBundle {
     pub schema_version: String,
@@ -104,6 +167,10 @@ pub struct LineageBundle {
     pub delivery: DeliveryObservation,
     pub settlement: SettlementObservation,
     pub claims: Vec<AttributionClaim>,
+    /// Cross-stage relationships. Defaulted so bundles written before links
+    /// existed still deserialize.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub links: Vec<LineageLink>,
     pub unresolved: Vec<UnresolvedField>,
     /// Provider-specific leftovers, namespaced, never silently dropped.
     pub raw_extensions: BTreeMap<String, serde_json::Value>,
@@ -127,6 +194,7 @@ impl LineageBundle {
                 ..Default::default()
             },
             claims: Vec::new(),
+            links: Vec::new(),
             unresolved: Vec::new(),
             raw_extensions: BTreeMap::new(),
             decoded_transaction: None,
@@ -135,6 +203,18 @@ impl LineageBundle {
 
     pub fn push_claim(&mut self, claim: AttributionClaim) {
         self.claims.push(claim);
+    }
+
+    pub fn push_link(&mut self, link: LineageLink) {
+        self.links.push(link);
+    }
+
+    /// All links touching a stage, in insertion order.
+    pub fn links_for_stage(&self, stage: Stage) -> Vec<&LineageLink> {
+        self.links
+            .iter()
+            .filter(|l| l.from_stage == stage || l.to_stage == stage)
+            .collect()
     }
 
     pub fn push_unresolved(&mut self, field: impl Into<String>, reason: impl Into<String>) {

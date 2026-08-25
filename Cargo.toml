@@ -1,17 +1,21 @@
 [package]
-name = "dflow-lineage"
+name = "onchain-execution-lineage"
 version = "0.1.0"
 edition = "2021"
-description = "A Rust lab for tracing DFlow quote metadata into unsigned Solana transactions, decoded instructions, accounts, and provenance boundaries."
+description = "Read-only Rust toolkit for reconstructing and verifying execution lineage across provider responses, transaction construction, and settlement."
+default-run = "onchain-execution-lineage"
 license = "MIT"
 
 [lib]
-name = "dflow_lineage"
+name = "onchain_execution_lineage"
 path = "src/lib.rs"
 
 [[bin]]
-name = "dflow-lineage"
+name = "onchain-execution-lineage"
 path = "src/main.rs"
+
+# Deprecated alias, kept so existing scripts and published commands still run.
+# Auto-discovered from src/bin/dflow-lineage.rs.
 
 [dependencies]
 tokio = { version = "1", features = ["full"] }

@@ -1,9 +1,18 @@
+//! Legacy DFlow normalization: provider extraction → [`LineageBundle`].
+//!
+//! Kept so the existing `trace` / `experiment` / `route-bracket` paths keep
+//! working unchanged. It no longer knows any DFlow field names — those live in
+//! [`crate::adapters::dflow`], and this module only maps the neutral extraction
+//! onto the older bundle shape.
+
 use anyhow::Result;
 use serde_json::Value;
 
-use super::{collect_unknown, take_string, ProviderAdapter};
+use super::ProviderAdapter;
+use crate::adapters::dflow::DflowAdapter as DflowExtraction;
+use crate::adapters::{ProviderAdapter as _, RawProviderArtifact};
 use crate::evidence::{AttributionClaim, EvidenceLevel};
-use crate::lineage_model::{LineageBundle, RouteLegObservation};
+use crate::lineage_model::LineageBundle;
 
 pub struct DflowAdapter;
 
@@ -13,113 +22,66 @@ impl ProviderAdapter for DflowAdapter {
     }
 
     fn detect(&self, value: &Value) -> bool {
-        // Developer /quote often has routePlan + requestId.
-        // Developer /order has routePlan + executionMode and/or transaction,
-        // and may omit requestId.
-        let has_route = value.get("routePlan").is_some();
-        let quote_shaped = value.get("requestId").is_some();
-        let order_shaped = value.get("executionMode").is_some()
-            || value.get("lastValidBlockHeight").is_some()
-            || (value.get("transaction").and_then(|t| t.as_str()).is_some()
-                && value.get("outAmount").is_some());
-        has_route && (quote_shaped || order_shaped)
+        DflowExtraction::detects(value)
     }
 
     fn normalize(&self, value: &Value, bundle: &mut LineageBundle) -> Result<()> {
-        let obj = value.as_object().cloned().unwrap_or_default();
+        let raw = RawProviderArtifact::from_value(value.clone());
+        let e = DflowExtraction.extract(&raw)?;
+
         bundle.capture.provider = "dflow".into();
-        bundle.quote.input_mint = take_string(value, "inputMint");
-        bundle.quote.output_mint = take_string(value, "outputMint");
-        bundle.quote.in_amount = take_string(value, "inAmount");
-        bundle.quote.out_amount = take_string(value, "outAmount");
-        bundle.quote.min_out_amount = take_string(value, "minOutAmount")
-            .or_else(|| take_string(value, "otherAmountThreshold"));
-        bundle.quote.request_or_quote_id = take_string(value, "requestId");
+        bundle.quote.input_mint = e.response.input_mint.clone();
+        bundle.quote.output_mint = e.response.output_mint.clone();
+        bundle.quote.in_amount = e.response.in_amount.clone();
+        bundle.quote.out_amount = e.response.out_amount.clone();
+        // The legacy bundle has one minimum slot; minOutAmount wins, matching
+        // the behaviour this field had before the adapter split.
+        bundle.quote.min_out_amount = e
+            .response
+            .min_out_amount
+            .clone()
+            .or_else(|| e.response.other_amount_threshold.clone());
+        bundle.quote.request_or_quote_id = e.response.request_or_quote_id.clone();
 
-        if let Some(fee) = value.get("platformFee") {
-            if fee.is_null() {
-                bundle.fee.platform_fee_visible = Some("null".into());
-            } else {
-                bundle.fee.platform_fee_visible = Some(fee.to_string());
-                if let Some(bps) = fee.get("feeBps").and_then(|b| b.as_u64()) {
-                    bundle.fee.fee_bps = Some(bps as u32);
-                }
-                bundle.fee.fee_account = take_string(fee, "feeAccount");
-                bundle.fee.fee_mint = take_string(fee, "feeMint");
-                bundle.fee.mode = take_string(fee, "mode");
-            }
+        if let Some(fee) = &e.response.platform_fee {
+            bundle.fee.platform_fee_visible = fee.visible.clone();
+            bundle.fee.fee_bps = fee.fee_bps;
+            bundle.fee.fee_account = fee.fee_account.clone();
+            bundle.fee.fee_mint = fee.fee_mint.clone();
+            bundle.fee.mode = fee.mode.clone();
         }
 
-        if let Some(legs) = value.get("routePlan").and_then(|r| r.as_array()) {
-            for leg in legs {
-                bundle.route.legs.push(RouteLegObservation {
-                    venue_or_label: take_string(leg, "venue").unwrap_or_else(|| "unknown".into()),
-                    input_mint: take_string(leg, "inputMint"),
-                    output_mint: take_string(leg, "outputMint"),
-                    in_amount: take_string(leg, "inAmount"),
-                    out_amount: take_string(leg, "outAmount"),
-                    market_key: take_string(leg, "marketKey"),
-                });
-            }
+        if let Some(route) = &e.route {
+            // Leg observations carry over; the route *label* does not. DFlow
+            // names no router, and a single leg's venue is not one.
+            bundle.route.legs.extend(route.legs.iter().cloned());
         }
 
-        if let Some(flag) = value.get("forJitoBundle").and_then(|v| v.as_bool()) {
+        if let Some(flag) = e.extensions.get("for_jito_bundle").and_then(Value::as_bool) {
             bundle.delivery.for_jito_bundle_flag = Some(flag);
         }
 
-        match value.get("transaction") {
-            None => {
-                bundle.transaction_construction.present = false;
-                bundle.push_unresolved(
-                    "transaction",
-                    "field absent on this DFlow surface (quote-only or omitted)",
-                );
-            }
-            Some(v) if v.is_null() => {
-                bundle.transaction_construction.present = false;
-                bundle.push_unresolved("transaction", "field present but null");
-            }
-            Some(v) if v.as_str().is_some() => {
+        match &e.transaction {
+            Some(t) if t.present => {
                 bundle.transaction_construction.present = true;
-                bundle.transaction_construction.encoding = Some("base64".into());
+                bundle.transaction_construction.encoding = t.encoding.clone();
+                if t.encoding.is_none() {
+                    bundle.push_unresolved("transaction", "non-string transaction payload");
+                }
             }
-            Some(_) => {
-                bundle.transaction_construction.present = true;
-                bundle.push_unresolved("transaction", "non-string transaction payload");
-            }
+            _ => bundle.transaction_construction.present = false,
+        }
+        for u in &e.unsupported {
+            bundle.push_unresolved(u.field.clone(), u.reason.clone());
         }
 
-        let known = [
-            "inputMint",
-            "inAmount",
-            "outputMint",
-            "outAmount",
-            "otherAmountThreshold",
-            "minOutAmount",
-            "slippageBps",
-            "platformFee",
-            "outTransferFee",
-            "priceImpactPct",
-            "routePlan",
-            "contextSlot",
-            "requestId",
-            "forJitoBundle",
-            "transaction",
-            "executionMode",
-            "lastValidBlockHeight",
-            "computeUnitLimit",
-            "prioritizationFeeLamports",
-            "prioritizationType",
-            "revertMint",
-        ];
-        if let Some(mode) = take_string(value, "executionMode") {
+        if let Some(mode) = &e.response.execution_mode {
             bundle
                 .raw_extensions
                 .insert("execution_mode".into(), serde_json::json!(mode));
         }
-        let ext = collect_unknown(&obj, &known);
-        if !ext.as_object().map(|m| m.is_empty()).unwrap_or(true) {
-            bundle.raw_extensions.insert("dflow".into(), ext);
+        if let Some(ext) = e.extensions.get("dflow") {
+            bundle.raw_extensions.insert("dflow".into(), ext.clone());
         }
 
         if let Some(id) = &bundle.quote.request_or_quote_id {

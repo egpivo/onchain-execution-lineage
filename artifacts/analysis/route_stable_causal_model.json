@@ -1,0 +1,366 @@
+{
+  "schema_version": "1.0.0",
+  "model_id": "dflow_route_stable_scm_v1",
+  "status": "frozen",
+  "authored": true,
+  "note": "Frozen explanatory structural model for the DFlow route-stable bracket experiment. This file is authored, not derived: it states assumed structure, evidence class and claim ceiling. It deliberately carries no empirical counts \u2014 those live in route_stable_batch_evidence.json and eligible_byte_evidence.json, so the two cannot drift apart. A repository test enforces that.",
+  "not_a_claim": [
+    "This is not a fitted model and contains no probabilities or effect sizes.",
+    "The route-stable contrast is not a Pearl controlled direct effect: route was selected on, never intervened on.",
+    "No arrow here asserts that slippage caused any observed reroute."
+  ],
+  "reader_classes": {
+    "caused": {
+      "label": "Exact response relation",
+      "glyph": "=",
+      "short": "exact",
+      "description": "A named response field follows a stated integer relation to the parameter that was set, in every capture.",
+      "maps_from": [
+        "intervention_supported"
+      ]
+    },
+    "together": {
+      "label": "Observed together",
+      "glyph": "?",
+      "short": "not isolated",
+      "description": "Both moved in the same captures, but the design cannot attribute one to the other.",
+      "maps_from": [
+        "observed_covariation",
+        "hypothesized"
+      ]
+    },
+    "candidate": {
+      "label": "Candidate byte match",
+      "glyph": "~",
+      "short": "candidate",
+      "description": "A value appears as a literal at a recurring position under the tested encoding family. Not semantic decoding.",
+      "maps_from": [
+        "candidate"
+      ]
+    },
+    "not_observed": {
+      "label": "Not identified under this search",
+      "glyph": "x",
+      "short": "not identified",
+      "description": "Not recovered under the encoding family tested, or outside the observation boundary entirely.",
+      "maps_from": [
+        "unobserved"
+      ]
+    }
+  },
+  "evidence_classes": {
+    "intervention_supported": {
+      "label": "Intervention-supported",
+      "marker": "solid",
+      "glyph": "\u25cf",
+      "description": "A parameter was set by the experimenter and the downstream response was observed to follow an exact stated relation within this experiment."
+    },
+    "observed_covariation": {
+      "label": "Observed covariation",
+      "marker": "solid-thin",
+      "glyph": "\u25d0",
+      "description": "Both endpoints were observed to move together across captures. Direction is assumed from the structure, not demonstrated."
+    },
+    "candidate": {
+      "label": "Candidate encoding",
+      "marker": "dashed",
+      "glyph": "\u25b3",
+      "description": "A byte-equality match that recurs across eligible brackets. Not a decoded protocol field."
+    },
+    "hypothesized": {
+      "label": "Hypothesized",
+      "marker": "dotted",
+      "glyph": "\u25cb",
+      "description": "Structural assumption used to reason about the design. Not identified by this experiment."
+    },
+    "unobserved": {
+      "label": "Outside observation boundary",
+      "marker": "dashed-faint",
+      "glyph": "\u2715",
+      "description": "Nothing was signed or submitted, so this relation produced no observation at all."
+    }
+  },
+  "nodes": [
+    {
+      "id": "S",
+      "label": "S",
+      "name": "slippageBps",
+      "definition": "Requested slippage tolerance, in basis points, sent on the /order request. This is the only quantity set by the experimenter.",
+      "role": "intervened",
+      "observed": true,
+      "values_used": [
+        10,
+        50,
+        100
+      ],
+      "evidence": "Set directly by the bracket runner. Anchors 50 bps; treatments 10 and 100 bps.",
+      "ceiling": "Intervened on directly. No inference required.",
+      "x": 90,
+      "y": 250
+    },
+    {
+      "id": "U",
+      "label": "U",
+      "name": "market state",
+      "definition": "Contemporaneous market and venue state at request time: inventory, quotes and liquidity across the venues the router can reach.",
+      "role": "background",
+      "observed": false,
+      "evidence": "Never measured. Its movement is only detected indirectly, through drift between the two 50 bps anchors.",
+      "ceiling": "Unmeasured. The bracket detects that it may have moved; it does not control it.",
+      "x": 300,
+      "y": 60
+    },
+    {
+      "id": "R",
+      "label": "R",
+      "name": "routePlan",
+      "definition": "The route topology returned by the provider: venues, market keys, leg order and allocation. Fingerprinted before any results were inspected.",
+      "role": "downstream_of_intervention",
+      "observed": true,
+      "evidence": "Observed on every request and hashed into a route fingerprint that was frozen before any live results were inspected.",
+      "ceiling": "Observed, but selected on rather than assigned. Selecting on R is not do(R).",
+      "x": 300,
+      "y": 250
+    },
+    {
+      "id": "Q",
+      "label": "Q",
+      "name": "outAmount",
+      "definition": "Quoted output amount for the order, in token base units.",
+      "role": "quote_stage",
+      "observed": true,
+      "evidence": "Read from all 30 order responses.",
+      "ceiling": "Directly observed in the response body.",
+      "x": 500,
+      "y": 165
+    },
+    {
+      "id": "M",
+      "label": "M",
+      "name": "otherAmountThreshold",
+      "definition": "Minimum-output threshold carried on the order. Equal to minOutAmount in every observation.",
+      "role": "quote_stage",
+      "observed": true,
+      "evidence": "Follows an exact integer relation to the quoted amount and the requested slippage. Verified match counts are carried by the evidence extract, not by this file.",
+      "ceiling": "Exact within this experiment and this execution mode. Not asserted as a universal provider rule.",
+      "x": 500,
+      "y": 345
+    },
+    {
+      "id": "B",
+      "label": "B",
+      "name": "unsigned transaction",
+      "definition": "The unsigned versioned Solana transaction returned with the order: instructions, payloads, accounts and address-lookup tables.",
+      "role": "construction",
+      "observed": true,
+      "evidence": "Decoded for every request. In eligible brackets, exactly one instruction payload changed.",
+      "ceiling": "Bytes are observed. Field semantics are not: no IDL or official decoder was used.",
+      "x": 700,
+      "y": 250
+    },
+    {
+      "id": "Y",
+      "label": "Y",
+      "name": "settlement",
+      "definition": "Realized settlement: landed transaction, delivery path and filled price.",
+      "role": "outside_boundary",
+      "observed": false,
+      "evidence": "None. Nothing was signed and nothing was submitted.",
+      "ceiling": "Entirely outside the observation boundary of this experiment.",
+      "x": 900,
+      "y": 250
+    }
+  ],
+  "edges": [
+    {
+      "id": "S_R",
+      "from": "S",
+      "to": "R",
+      "equation": "R := f_R(S, U, order)",
+      "evidence_class": "hypothesized",
+      "label": "may influence routing",
+      "note": "Structurally possible: the router may take the tolerance into account. This experiment does not show it. Reroutes were observed both with and without a treatment change, and market state moved at the same time.",
+      "ceiling": "Not identified. Do not read any reroute in this data as caused by slippage."
+    },
+    {
+      "id": "U_R",
+      "from": "U",
+      "to": "R",
+      "equation": "R := f_R(S, U, order)",
+      "evidence_class": "hypothesized",
+      "label": "market state moves routing",
+      "note": "The two 50 bps anchors returned different routes in several brackets with no parameter change between them, which is consistent with routing that tracks market state.",
+      "ceiling": "Consistent with the data; not separately identified."
+    },
+    {
+      "id": "R_Q",
+      "from": "R",
+      "to": "Q",
+      "equation": "Q := f_Q(R, U, order)",
+      "evidence_class": "observed_covariation",
+      "label": "route shapes the quote",
+      "note": "Quoted output differs across requests that also differ in route. The two sources of variation are not separated here.",
+      "ceiling": "Covariation only."
+    },
+    {
+      "id": "U_Q",
+      "from": "U",
+      "to": "Q",
+      "equation": "Q := f_Q(R, U, order)",
+      "evidence_class": "hypothesized",
+      "label": "market state moves the quote",
+      "note": "Quoted output drifted between the two anchors even when the route fingerprint was identical.",
+      "ceiling": "Consistent with the data; not separately identified."
+    },
+    {
+      "id": "Q_M",
+      "from": "Q",
+      "to": "M",
+      "equation": "M := f_M(Q, S)",
+      "evidence_class": "intervention_supported",
+      "label": "quote feeds the threshold",
+      "note": "Part of the exact integer identity M = ceil(Q * (10000 - S) / 10000), which held for all 30 observations.",
+      "ceiling": "Exact within this experiment."
+    },
+    {
+      "id": "S_M",
+      "from": "S",
+      "to": "M",
+      "equation": "M := f_M(Q, S)",
+      "evidence_class": "intervention_supported",
+      "label": "slippage sets the threshold",
+      "note": "The intervened parameter enters the threshold directly: setting S moves M exactly as the integer identity predicts.",
+      "ceiling": "Exact within this experiment and this execution mode.",
+      "curve": 115
+    },
+    {
+      "id": "R_B",
+      "from": "R",
+      "to": "B",
+      "equation": "B := f_B(R, Q, M, accounts, provider state, ...)",
+      "evidence_class": "observed_covariation",
+      "label": "route shapes construction",
+      "note": "When the route fingerprint changed, program sets and account topology changed with it. This is why route-unstable brackets are excluded before any byte comparison.",
+      "ceiling": "Covariation, observed across ineligible brackets."
+    },
+    {
+      "id": "Q_B",
+      "from": "Q",
+      "to": "B",
+      "equation": "B := f_B(R, Q, M, accounts, provider state, ...)",
+      "evidence_class": "candidate",
+      "label": "candidate byte match",
+      "note": "In the eligible brackets the quoted output value matched a literal inside one instruction payload, at a position that recurred across every request searched. Location, coverage and canonical encoding come from the byte-evidence extract.",
+      "ceiling": "Byte equality is not semantic decoding. This offset is not established as the protocol's outAmount field."
+    },
+    {
+      "id": "M_B",
+      "from": "M",
+      "to": "B",
+      "equation": "B := f_B(R, Q, M, accounts, provider state, ...)",
+      "evidence_class": "hypothesized",
+      "label": "threshold not located",
+      "note": "The threshold was one of the three quantities searched for in the instruction payloads. It produced no match in any eligible bracket.",
+      "ceiling": "Not identified in this experiment. Absence of a byte-equality match is not proof the threshold is absent from the transaction: it may be encoded, scaled or packed differently.",
+      "curve": 85
+    },
+    {
+      "id": "B_Y",
+      "from": "B",
+      "to": "Y",
+      "equation": "Y := f_Y(B, future state, delivery, ...)",
+      "evidence_class": "unobserved",
+      "label": "never observed",
+      "note": "No signature, no submission, no delivery, no fill.",
+      "ceiling": "Outside the observation boundary by design."
+    }
+  ],
+  "collider": {
+    "structure": "S \u2192 R \u2190 U",
+    "nodes": [
+      "S",
+      "R",
+      "U"
+    ],
+    "edges": [
+      "S_R",
+      "U_R"
+    ],
+    "explanation": "Route sits downstream of both the intervened parameter and the unmeasured market state. Keeping only brackets whose route stayed stable is a selection rule applied to that shared child. Selecting on a common child can associate its two parents even when one of them was set externally.",
+    "consequence": "The eligible comparison is a cleaner forensic window, not a randomized mediator experiment. It should not be described as a controlled direct effect.",
+    "preferred_terms": [
+      "route-stable mechanism contrast",
+      "mechanism-isolation window",
+      "route-stable eligible bracket"
+    ],
+    "rejected_terms": [
+      "controlled direct effect",
+      "CDE",
+      "route held constant by design"
+    ]
+  },
+  "boundary": {
+    "x": 800,
+    "label": "observation boundary",
+    "observed": [
+      "request parameters",
+      "order response fields",
+      "unsigned transaction bytes",
+      "loaded accounts and programs"
+    ],
+    "not_observed": [
+      "signature",
+      "submission",
+      "delivery path",
+      "landed transaction",
+      "realized fill"
+    ]
+  },
+  "modes": [
+    {
+      "id": "structural",
+      "label": "Structural model",
+      "summary": "The assumed structure. Line style and badge show how much support each arrow actually has.",
+      "emphasize": [],
+      "dim": []
+    },
+    {
+      "id": "intervention",
+      "label": "Intervention",
+      "summary": "Only S was set by the experimenter. Nothing upstream of S remains: the parameter was assigned, not observed. Downstream arrows show what could propagate, not what was identified.",
+      "emphasize": [
+        "S_R",
+        "S_M",
+        "Q_M"
+      ],
+      "dim": [],
+      "intervened": "S"
+    },
+    {
+      "id": "selection",
+      "label": "Route-stable selection",
+      "summary": "Eligibility keeps only brackets whose route topology held still. That is a selection rule on R, a shared child of S and U. Observed route stability is a selection rule, not an intervention on route.",
+      "emphasize": [
+        "S_R",
+        "U_R"
+      ],
+      "dim": [
+        "B_Y"
+      ],
+      "collider": true
+    },
+    {
+      "id": "evidence",
+      "label": "Evidence",
+      "summary": "What this experiment actually supports: an exact quote-stage identity, one recurring candidate byte match, one quantity searched for and not found, and a settlement path with no observations at all.",
+      "emphasize": [
+        "S_M",
+        "Q_M",
+        "Q_B",
+        "M_B",
+        "B_Y"
+      ],
+      "dim": []
+    }
+  ]
+}

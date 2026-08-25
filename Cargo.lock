@@ -1096,31 +1096,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "dflow-lineage"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "base64 0.22.1",
- "bincode",
- "chrono",
- "clap",
- "csv",
- "reqwest",
- "serde",
- "serde_json",
- "sha2 0.10.9",
- "solana-address-lookup-table-interface",
- "solana-client",
- "solana-sdk",
- "solana-transaction-status-client-types",
- "thiserror 1.0.69",
- "tokio",
- "tracing",
- "tracing-subscriber",
- "wiremock",
-]
-
-[[package]]
 name = "digest"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2498,6 +2473,31 @@ name = "once_cell_polyfill"
 version = "1.70.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "384b8ab6d37215f3c5301a95a4accb5d64aa607f1fcb26a11b5303878451b4fe"
+
+[[package]]
+name = "onchain-execution-lineage"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "base64 0.22.1",
+ "bincode",
+ "chrono",
+ "clap",
+ "csv",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "solana-address-lookup-table-interface",
+ "solana-client",
+ "solana-sdk",
+ "solana-transaction-status-client-types",
+ "thiserror 1.0.69",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "wiremock",
+]
 
 [[package]]
 name = "opaque-debug"

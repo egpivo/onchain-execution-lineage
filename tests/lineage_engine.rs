@@ -3,15 +3,15 @@
 //! Public fixtures live under `tests/fixtures/`.
 //! Private research corpus lives under `.local/corpus/` (gitignored).
 
-use dflow_lineage::artifact::ArtifactManifest;
-use dflow_lineage::diff::diff_bundles;
-use dflow_lineage::evidence::{AttributionClaim, EvidenceLevel};
-use dflow_lineage::fingerprint::{
+use onchain_execution_lineage::artifact::ArtifactManifest;
+use onchain_execution_lineage::diff::diff_bundles;
+use onchain_execution_lineage::evidence::{AttributionClaim, EvidenceLevel};
+use onchain_execution_lineage::fingerprint::{
     fingerprint_group, n1_refuses_unique_promotion, CorpusEntry, CorpusManifest,
 };
-use dflow_lineage::lineage_model::{CaptureMetadata, LineageBundle};
-use dflow_lineage::providers;
-use dflow_lineage::transaction::decode_base64_transaction;
+use onchain_execution_lineage::lineage_model::{CaptureMetadata, LineageBundle};
+use onchain_execution_lineage::providers;
+use onchain_execution_lineage::transaction::decode_base64_transaction;
 use std::path::{Path, PathBuf};
 
 fn root() -> PathBuf {
@@ -157,8 +157,10 @@ fn diff_marks_unique_program_as_candidate_not_fingerprint() {
     right.transaction_construction.program_ids = vec!["BBB".into()];
     let d = diff_bundles(&left, &right);
     assert!(d.entries.iter().any(|e| {
-        matches!(e.class, dflow_lineage::diff::DiffClass::AppCandidate)
-            && e.note.contains("candidate")
+        matches!(
+            e.class,
+            onchain_execution_lineage::diff::DiffClass::AppCandidate
+        ) && e.note.contains("candidate")
     }));
 }
 
@@ -184,6 +186,6 @@ fn private_corpus_manifest_loads_when_present() {
         eprintln!("skip: .local/corpus not present");
         return;
     }
-    let c = dflow_lineage::fingerprint::load_corpus(&manifest).unwrap();
+    let c = onchain_execution_lineage::fingerprint::load_corpus(&manifest).unwrap();
     assert!(!c.entries.is_empty());
 }

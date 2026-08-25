@@ -1,6 +1,6 @@
 //! Offline controlled-experiment integration tests (fixture mode).
 
-use dflow_lineage::experiment::{run_experiment, ExperimentManifest};
+use onchain_execution_lineage::experiment::{run_experiment, ExperimentManifest};
 use std::path::PathBuf;
 
 fn root() -> PathBuf {
@@ -74,6 +74,9 @@ fn public_experiment_manifests_validate() {
         let m =
             ExperimentManifest::load_path(&root().join("tests/fixtures/experiments").join(name))
                 .unwrap_or_else(|e| panic!("{name}: {e}"));
-        assert_eq!(m.mode, dflow_lineage::experiment::ExperimentMode::Fixture);
+        assert_eq!(
+            m.mode,
+            onchain_execution_lineage::experiment::ExperimentMode::Fixture
+        );
     }
 }

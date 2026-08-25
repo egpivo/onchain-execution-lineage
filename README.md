@@ -1,111 +1,257 @@
-# DFlow Transaction Lineage
+# onchain-execution-lineage
 
-[![Rust](https://github.com/egpivo/dflow-transaction-lineage/actions/workflows/rust.yaml/badge.svg)](https://github.com/egpivo/dflow-transaction-lineage/actions/workflows/rust.yaml)
+[![Rust](https://github.com/egpivo/onchain-execution-lineage/actions/workflows/rust.yaml/badge.svg)](https://github.com/egpivo/onchain-execution-lineage/actions/workflows/rust.yaml)
 [![codecov](https://codecov.io/gh/egpivo/onchain-execution-lineage/graph/badge.svg?token=URjc54t2hA)](https://codecov.io/gh/egpivo/onchain-execution-lineage)
 
-**What survives from an execution interface into a Solana transaction?**
+**onchain-execution-lineage is a read-only Rust toolkit for reconstructing and
+verifying execution lineage across provider responses, transaction
+construction, and settlement.**
 
-Read-only Solana execution mechanism and transaction-lineage experiments in Rust.
+- DFlow is the first complete provider integration.
+- Solana is the first execution backend.
+- Jupiter support is partial, and says so per field rather than faking parity.
 
-No signing. No submission. No wallet keys.
+The tool does **not** sign or submit transactions, does **not** simulate fills,
+and does **not** infer causal effects.
 
-## Evidence stages
+## Canonical lineage construction
+
+There is exactly one path that creates a `LineageBundle`. Everything else
+consumes one.
 
 ```text
-UI / app claim
-    → provider JSON (quote/order)
-        → unsigned VersionedTransaction (if present)
-            → loaded accounts / programs (decode + ALT resolve)
-                → settlement (only with a signature)
+raw response │ manifest │ transaction file │ signature
+        └──────────┴────────────┴────────────┘
+                        │  ingestion
+                        ▼
+              provider extraction (adapters/)
+                        ▼
+                 ExecutionContext
+                        ▼
+           Solana extraction (solana/), when a transaction exists
+                        ▼
+                  LineageBuilder
+                        ▼
+                  LineageBundle
+                   │     │     │
+             trace │     │     │ verify
+           (explain)     │     (check)
+                      diff / report / fingerprint
 ```
 
-Each attribution carries an explicit evidence level
-(`direct_observation`, `decoded_from_transaction`, `resolved_from_rpc`,
-`external_program_label`, `cross_artifact_inference`, `candidate`,
-`unresolved`). There is no scalar confidence score.
+`extract` constructs lineage, `trace` explains it, `verify` checks it. `trace`'s
+manifest flags are ingestion only — a manifest supplies identity and
+provenance, never normalization. A regression test asserts that `extract` and
+`trace` over the same artifact resolve to byte-identical bundles once
+manifest-supplied identity is normalized away.
+
+## Architecture
+
+```text
+                     Execution Verifier Core
+                              │
+               ┌──────────────┼──────────────┐
+               │              │              │
+             DFlow         Jupiter        Generic
+            adapter        adapter        adapter
+               │
+               ▼
+      raw provider response
+               ▼
+      provider-specific extraction        ← provider field names stop here
+               ▼
+      Normalized ExecutionContext
+               ▼
+      generic Solana extraction           ← decode, ALT, account ordering
+               ▼
+          LineageBundle                   ← cross-stage links + ceilings
+               ▼
+             verify                       ← PASS / FAIL / CANDIDATE /
+                                            UNKNOWN / NOT_APPLICABLE
+```
+
+Every stage of an `ExecutionContext` is optional. The same model covers a
+response on its own, a response plus an unsigned transaction, a transaction on
+its own, and a full intent → settlement lineage. A missing input produces a
+missing stage, never an empty one.
+
+| Module | Role |
+|---|---|
+| `adapters/` | provider adapter boundary — `RawProviderArtifact → ProviderExtraction` |
+| `execution_context` | normalized, stage-optional execution state |
+| `solana/` | provider-independent extraction → `solana::TransactionObservation`: decode, version, ALT resolution, loaded-account ordering, account-index validity, compute budget, topology |
+| `lineage_builder` | cross-stage joins → `LineageBundle` |
+| `checks/` | `generic/`, `dflow/`, `solana/`, `settlement/` |
+| `trace` | ingestion glue + rendering over the pipeline above |
+| `providers/` | compatibility shim, closed to new provider semantics |
+
+`solana::TransactionObservation` is what a Solana transaction's bytes show;
+`lineage_model::TransactionConstruction` is the chain-agnostic stage summary
+inside a bundle. Two names because they are two things.
+
+## Reference cases and reproducibility
+
+### Reproduce the DFlow slippage reference case
+
+One command, two honestly-separated modes. No signing, no submission, no live
+request in either.
+
+```bash
+# Public verification — works on a clean clone
+./scripts/reproduce_slippage_article.sh
+
+# Local rebuild from the original recorded captures
+./scripts/reproduce_slippage_article.sh --from-recorded-run
+```
+
+**Public mode** verifies the tracked Rust-generated evidence snapshot
+(`artifacts/analysis/route_stable_evidence_extract.json`). It re-derives the
+threshold arithmetic from the published inputs with the verifier's own
+implementation, and re-aggregates every summary claim from the snapshot's
+per-request detail. It does **not** rebuild the experiment: the 30 raw provider
+responses are not published, because they carry the requester's wallet pubkey.
+Each row says which it is — `recomputed`, `cross-checked`, or `attested`.
+
+```text
+requests                     30           PASS  cross-checked
+threshold ceil identity      30/30        PASS  recomputed
+floor identity               0/30         PASS  recomputed
+quote literal matches        15/15        PASS  cross-checked
+threshold literal matches    0            PASS  cross-checked
+quote candidate site         ix2:99       PASS  cross-checked
+same-treatment controls      5/5          PASS  cross-checked
+settlement                   unavailable  PASS  attested
+
+16/16 claims verified (2 attested, 12 cross-checked, 2 recomputed)
+```
+
+**Local rebuild mode** requires the recorded run under
+`artifacts/experiments/` (gitignored). It regenerates the snapshot through the
+Rust pipeline and compares it field by field against the tracked one, failing on
+any divergence, then runs one recorded response through the production
+`extract → lineage → verify` path. It proves the chain
+
+```text
+recorded raw artifacts → Rust analysis → evidence extract → tracked publication extract
+```
+
+with no Python, no frontend and no network step. Both modes are orchestration
+only: every value, comparison and verdict lives in `src/reference_case.rs` and
+is asserted by Rust tests.
+
+### DFlow reference artifact
+
+A single recorded DFlow `/order` response through the canonical pipeline
+(requires the recorded run locally):
+
+```bash
+cargo run -- extract \
+  --provider dflow \
+  --response artifacts/experiments/dflow_order_slippage_route_stable_live/raw/b00_A1_50.json
+
+cargo run -- verify --lineage artifacts/lineage/dflow_592152452cbc
+```
+
+```text
+PASS           dflow.slippage_threshold_arithmetic  threshold equals ceil(out_amount * (10000 - slippage_bps) / 10000)
+PASS           dflow.min_out_matches_threshold      minOutAmount and otherAmountThreshold carry the same value
+PASS           solana.transaction_version           message version read from the encoded message
+PASS           solana.account_index_validity        every account index resolves inside the loaded account vector
+UNKNOWN        solana.alt_resolution                lookup tables referenced but resolution was not attempted (offline)
+CANDIDATE      solana.candidate_byte_search         at least one response value appears verbatim in instruction bytes
+NOT_APPLICABLE settlement.landed_status             artifact is unsigned or unsubmitted; no settlement evidence exists
+
+PASS=13 FAIL=0 CANDIDATE=1 UNKNOWN=1 NOT_APPLICABLE=4
+```
+
+The quoted `outAmount` occurs at `instruction[2]+99`; the slippage threshold
+occurs nowhere in any instruction payload. Both results carry an explicit
+ceiling — byte presence is not semantic decoding, and non-recovery is not
+evidence of absence.
+
+`artifacts/lineage/` is gitignored: the generated context embeds the unsigned
+transaction and its fee-payer pubkey.
+
+## Commands
+
+The binary is `onchain-execution-lineage`. A deprecated `dflow-lineage` alias
+runs the same CLI and prints a notice, so existing scripts and published
+commands keep working; it will be removed in a later milestone.
+
+```bash
+cargo run -- extract --provider dflow --response capture.json
+cargo run -- trace   --lineage artifacts/lineage/<id>
+cargo run -- verify  --lineage artifacts/lineage/<id>
+
+# verify straight from a raw response (extracts first)
+cargo run -- verify --provider dflow --response capture.json
+```
+
+| Command | Role |
+|---|---|
+| `extract` | raw evidence → `ExecutionContext` + `LineageBundle` |
+| `trace` | explain provenance and cross-stage relationships (`--lineage`), or ingest a manifest into the canonical pipeline (legacy flags) |
+| `verify` | run cross-layer checks |
+| `decode` / `fetch-and-decode` / `map` | transaction decode + ALT / account map |
+| `diff` | compare two bundles |
+| `quote` | live DFlow-dev `/quote` capture |
+| `fingerprint` | corpus group report (refuses n&lt;2 promotion) |
+| `experiment` / `route-bracket` | bounded mechanism experiments |
+| `reference-case` | reproduce/verify the DFlow slippage reference case |
+| `lineage` | deprecated static field-lineage CSV |
+
+`extract` and `verify` are offline unless `--rpc-url` is given. Adding it
+enables address-lookup-table resolution; `--enrich-settlement` additionally
+fetches settlement metadata for a `--signature`.
+
+## Evidence discipline
+
+Every attribution carries an explicit evidence level — `direct_observation`,
+`decoded_from_transaction`, `resolved_from_rpc`, `external_program_label`,
+`cross_artifact_inference`, `candidate`, `unresolved`. There is no scalar
+confidence score.
+
+Check results are not booleans:
+
+| Status | Meaning |
+|---|---|
+| `PASS` | the relationship holds on observed evidence |
+| `FAIL` | the relationship is contradicted by observed evidence |
+| `CANDIDATE` | consistent with the claim, but indistinguishable from coincidence |
+| `UNKNOWN` | the evidence could exist but was not observed |
+| `NOT_APPLICABLE` | the check does not apply to this artifact |
+
+A candidate never becomes a pass. No settlement input means no settlement
+claim — a signature on its own is a pointer, not an observation.
+
+Rust owns the empirical facts. Downstream Python and JavaScript may cross-check,
+project, format and visualize; they do not define route fingerprints,
+transaction topology, eligibility, byte-search results, canonical encoding
+classification, or verification outcomes.
 
 ## Layout
 
 ```text
-src/           library + CLI
+src/           library + CLI (see architecture table above)
 tests/         unit/integration tests and public fixtures
 schemas/       machine-readable contracts (not prose docs)
-artifacts/     runtime outputs (captures, analysis)
+artifacts/     recorded runs: captures, experiments, lineage, analysis
 .local/        private only (gitignored): docs, research corpus
 ```
 
-## Quick start
-
-```bash
-cargo test
-cargo run -- lineage
-cargo run -- quote --pair USDC/SOL --amount-usd 1000 --slippage-bps 50
-```
-
-## Trace / diff (public smoke fixture)
-
-```bash
-cargo run -- trace \
-  --manifest tests/fixtures/manifests/valid_dflow_dev.json \
-  --provider-json tests/fixtures/dev_quote_usdc_sol_no_tx.json \
-  --out-json artifacts/analysis/dflow_dev_lineage.json
-```
-
-## Controlled experiments are not simulated fills
-
-`experiment` runs a **bounded**, manifest-declared set of provider requests
-(fixture JSON or live developer quotes). It compares quote fields, optional
-unsigned transactions, and lineage diffs against a baseline.
-
-It does **not** simulate fills, balances, wallets, realized fees, PnL, or
-landed execution. Mechanism reports only bucket what changed / did not change /
-cannot be observed without settlement.
-
-```bash
-cargo run -- experiment \
-  --manifest tests/fixtures/experiments/fee_injection_synthetic.json
-```
-
-Public synthetic manifests: fee injection, slippage threshold encoding, and
-size/route change under `tests/fixtures/experiments/`.
-
-Private research captures and fingerprint corpora live under `.local/corpus/`
-(not published). Docs / ADR / changelog also live under `.local/docs/`.
-
-## Evidence levels
-
-| Level | Meaning |
-|---|---|
-| `direct_observation` | Present in a captured JSON/UI artifact |
-| `decoded_from_transaction` | Present in decoded transaction bytes |
-| `resolved_from_rpc` | Filled via read-only RPC |
-| `external_program_label` | Known program ID from the verified registry |
-| `cross_artifact_inference` | Joined across artifacts with stated caveats |
-| `candidate` | Suggestive; needs repetition + negative controls |
-| `unresolved` | Not observable with current evidence |
-
-## Commands
-
-| Command | Role |
-|---|---|
-| `quote` | Live DFlow-dev `/quote` capture |
-| `decode` / `fetch-and-decode` / `map` | Transaction decode + ALT map |
-| `lineage` | Static DFlow-dev field-lineage CSV |
-| `trace` | Build `LineageBundle` + Markdown/CSV/DOT |
-| `diff` | Compare two bundles |
-| `fingerprint` | Corpus group report (refuses n&lt;2 promotion) |
-| `experiment` | Bounded fixture/live mechanism experiment (`/quote` or `/order`) |
-| `route-bracket` | Bracketed `/order` A1/T/A2 route-stability experiment |
-
 ## Limits
 
-- Not a trading bot, wallet, block explorer, or DFlow SDK.
-- DFlow program IDs are provider-generic, not JTX-specific.
-- Priority fees ≠ Jito delivery proof.
+- Not a trading bot, wallet, block explorer, or provider SDK.
+- Experiments compare mechanism evidence; they do not simulate fills,
+  balances, wallets, realized fees, or PnL.
+- DFlow program IDs are provider-generic, not integrator-specific.
+- Priority fees are not Jito delivery proof.
 - Unsigned instructions are never described as executed.
-- Cross-Surface economic panel stays in Python; this repo is provenance-only.
+- The causal model shipped alongside the experiments is explanatory and
+  number-free. Verification does not depend on it, and no causal edge is
+  derived from observed transaction data.
 
-## Reproducibility
+## Gates
 
 ```bash
 cargo fmt --check

@@ -324,6 +324,11 @@ pub async fn run_route_bracket_experiment(
         notes: manifest.notes.clone(),
     };
 
+    // Single source of truth for every empirical value published downstream.
+    // Written from the finished report so the article, figures and lab all read
+    // one file instead of recomputing the same arithmetic three times.
+    crate::evidence_extract::write(&report, base_dir, &out_dir)?;
+
     fs::write(
         out_dir.join("experiment_report.json"),
         serde_json::to_string_pretty(&report)?,

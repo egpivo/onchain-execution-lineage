@@ -1,6 +1,6 @@
 //! Fixture-backed quote parsing tests (no network).
 
-use dflow_lineage::models::DFlowQuoteResponse;
+use onchain_execution_lineage::models::DFlowQuoteResponse;
 
 // Live capture from 2026-07-29 against dev-quote-api.dflow.net.
 // Raw body has no `transaction` key at all (quote-only surface).
