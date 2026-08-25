@@ -3,13 +3,13 @@
 
 use anyhow::{Context, Result};
 use base64::{engine::general_purpose::STANDARD, Engine};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use solana_sdk::transaction::VersionedTransaction;
 
 use crate::program_registry::{jito_tip_accounts, known_programs};
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DecodedInstruction {
     pub index: usize,
     pub program_id: String,
@@ -26,7 +26,7 @@ pub struct DecodedInstruction {
     pub program_id_index: u8,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AltReference {
     pub lookup_table_account: String,
     pub num_writable_indexes: usize,
@@ -39,7 +39,7 @@ pub struct AltReference {
     pub readonly_indexes: Vec<u8>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DecodedTransaction {
     pub transaction_type: String,
     pub num_signature_slots: usize,

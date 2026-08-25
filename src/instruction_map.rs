@@ -13,13 +13,13 @@
 //! with ALT entries concatenated across tables in message order.
 
 use anyhow::{Context, Result};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 use crate::program_registry::known_programs;
 use crate::transaction::DecodedTransaction;
 
-#[derive(Debug, Clone, Serialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct LoadedAddress {
     /// Position in the final account vector -- the index instructions use.
     pub account_vector_index: usize,
@@ -43,7 +43,7 @@ pub struct LoadedAddress {
     pub exists_on_chain: Option<bool>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InstructionAccountRef {
     pub position_in_instruction: usize,
     pub account_vector_index: usize,
@@ -53,7 +53,7 @@ pub struct InstructionAccountRef {
     pub label: String,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MappedInstruction {
     pub instruction_index: usize,
     pub program_id: String,
@@ -63,7 +63,7 @@ pub struct MappedInstruction {
     pub accounts: Vec<InstructionAccountRef>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InstructionAccountMap {
     pub total_static_keys: usize,
     pub total_loaded_from_alts: usize,

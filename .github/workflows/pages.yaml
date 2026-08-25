@@ -1,0 +1,89 @@
+name: Pages
+
+# Deploys web/ as-is. No Node, no bundler, no build step: the site is static
+# files, and its data is copied from tracked artifacts by scripts/build_web.sh
+# and committed under web/data/ and web/samples/.
+#
+# The Rust workflow does not depend on this one, and this one does not depend
+# on any private artifact.
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Fail before publishing rather than shipping a page that 404s its own
+      # evidence. Existence only — no empirical logic lives in CI.
+      - name: Verify referenced public evidence artifacts exist
+        run: |
+          set -euo pipefail
+          required=(
+            web/index.html
+            web/app.js
+            web/styles.css
+            web/data/use-cases.json
+            web/data/route_stable_evidence_extract.json
+            web/data/route_stable_batch_evidence.json
+            web/data/route_stable_causal_model.json
+            web/data/fee_quote_evidence.json
+            web/samples/dflow-order/context.json
+            web/samples/dflow-order/lineage.json
+            web/samples/dflow-order/verification.json
+            web/samples/dflow-order-mismatch/verification.json
+          )
+          for path in "${required[@]}"; do
+            test -s "$path" || { echo "missing or empty: $path"; exit 1; }
+          done
+          # Every artifact the site declares must also be present.
+          python3 - <<'PY'
+          import json, pathlib, sys
+          index = json.load(open("web/data/use-cases.json"))
+          missing = [
+              p for p in index["artifacts"].values()
+              if not pathlib.Path("web", p.lstrip("./")).is_file()
+          ]
+          if missing:
+              print("declared but missing:", missing)
+              sys.exit(1)
+          print("all declared artifacts present:", len(index["artifacts"]))
+          PY
+          echo "all referenced public evidence artifacts present"
+
+      # The site must never carry captured data. This mirrors the Rust guard in
+      # tests/web_contract.rs so a bad commit cannot reach Pages even if the
+      # Rust job were skipped.
+      - name: Refuse to publish private capture data
+        run: |
+          set -euo pipefail
+          if grep -rl -e 'Hmx7mUZ2tHQewMWhEkyvWLuBDCoJy2nHtagd9XhZn7hL' \
+                      -e 'userPublicKey' \
+                      -e 'wallet_balance_at_capture_time' web/; then
+            echo "private capture data found in web/ — refusing to deploy"
+            exit 1
+          fi
+          echo "no private capture markers in web/"
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web
+      - id: deployment
+        uses: actions/deploy-pages@v4

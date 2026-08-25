@@ -1,0 +1,74 @@
+{
+  "schema_version": "1.0.0",
+  "note": "Site configuration for the Use Cases collection. Titles, questions and view lists are authored here; every empirical number is declared as a path into a tracked evidence artifact and read at render time, never copied into this file or into JavaScript.",
+  "artifacts": {
+    "slippage_extract": "./data/route_stable_evidence_extract.json",
+    "slippage_batches": "./data/route_stable_batch_evidence.json",
+    "causal_model": "./data/route_stable_causal_model.json",
+    "fee_quote": "./data/fee_quote_evidence.json"
+  },
+  "cases": [
+    {
+      "id": "dflow-slippage",
+      "title": "DFlow: Slippage Threshold Lineage",
+      "types": ["Experiment", "Reference Case"],
+      "providers": ["DFlow"],
+      "chain": "Solana",
+      "surface": "/order",
+      "question": "What remains observable after a named slippage threshold becomes an unsigned Solana transaction?",
+      "status": "published",
+      "summary": "A bounded bracket experiment: anchor, treatment, anchor. It asks which response-layer quantities can still be located once the order becomes transaction bytes — and records, explicitly, which cannot.",
+      "views": [
+        { "id": "", "label": "Overview" },
+        { "id": "threshold", "label": "Response invariant" },
+        { "id": "route", "label": "Route stability" },
+        { "id": "identification", "label": "Identification" },
+        { "id": "bytes", "label": "Byte search" },
+        { "id": "reproduce", "label": "Reproduce" }
+      ],
+      "metrics": [
+        { "label": "requests", "artifact": "slippage_extract", "path": "total_requests" },
+        { "label": "brackets", "artifact": "slippage_extract", "path": "total_batches" },
+        { "label": "eligible", "artifact": "slippage_extract", "path": "eligible_batch_count" },
+        {
+          "label": "transactions searched",
+          "artifact": "slippage_extract",
+          "path": "candidate_result.transactions_searched"
+        }
+      ],
+      "reproducibility": {
+        "public": "./scripts/reproduce_slippage_article.sh",
+        "local": "./scripts/reproduce_slippage_article.sh --from-recorded-run",
+        "note": "Public mode verifies the tracked evidence snapshot. Raw captures are not published."
+      },
+      "settlement": "not observed — unsigned, unsubmitted"
+    },
+    {
+      "id": "dflow-platform-fee",
+      "title": "DFlow: Platform Fee Accounting",
+      "types": ["Experiment"],
+      "providers": ["DFlow"],
+      "chain": "Solana",
+      "surface": "/quote",
+      "question": "How does a requested platform fee appear in the quoted amounts, and can it be traced further?",
+      "status": "published — response layer only",
+      "summary": "A separate, smaller run against the quote surface. It stops at the response layer: this endpoint returned no unsigned transaction, so nothing downstream of the quote can be checked.",
+      "views": [{ "id": "", "label": "Overview" }],
+      "metrics": [
+        { "label": "requests", "artifact": "fee_quote", "path": "design.requests" },
+        { "label": "fee treatments", "artifact": "fee_quote", "path": "design.fee_bps_treatments.length" },
+        { "label": "transaction returned", "artifact": "fee_quote", "path": "evidence_ceiling.transaction_returned" }
+      ],
+      "reproducibility": {
+        "note": "The recorded run is private. The tracked evidence projection is what this page renders."
+      },
+      "settlement": "not observed — quote surface returns no transaction"
+    }
+  ],
+  "planned": [
+    "Quote to settlement",
+    "Jupiter provider integration",
+    "DFlow vs Jupiter route lineage",
+    "Cross-chain execution lineage"
+  ]
+}

@@ -89,7 +89,7 @@ mod tests {
 
     #[test]
     fn write_dev_endpoint_lineage_marks_tx_columns_not_applicable() {
-        let dir = std::env::temp_dir().join(format!("dflow_lineage_test_{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("oel_lineage_test_{}", std::process::id()));
         fs::create_dir_all(&dir).unwrap();
         let out = dir.join("lineage.csv");
 

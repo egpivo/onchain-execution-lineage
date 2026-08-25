@@ -24,3 +24,12 @@ target
 # Added by cargo
 
 /target
+.local/
+
+# Regenerable experiment runs (source fixtures live under tests/fixtures/experiments/)
+/artifacts/experiments/
+
+# Lineage output is derived from those runs: context.json embeds the full
+# unsigned transaction and the requester's fee-payer pubkey. Regenerable with
+# `extract`; never published.
+/artifacts/lineage/

@@ -35,11 +35,17 @@ jobs:
         # main.rs is CLI glue — excluded from the reported library coverage.
         run: cargo llvm-cov --lcov --output-path lcov.info --ignore-filename-regex 'main\.rs'
 
+      # Public mode only: it reads the tracked evidence snapshot and never
+      # touches the private recorded captures or the network. Runs the script
+      # readers are told to run, so a broken entry point fails CI.
+      - name: Verify the published reference case (public mode)
+        run: ./scripts/reproduce_slippage_article.sh --skip-tests
+
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         with:
           files: lcov.info
           flags: unittests
-          name: dflow-lineage
+          name: onchain-execution-lineage
           fail_ci_if_error: true
           token: ${{ secrets.CODECOV_TOKEN }}

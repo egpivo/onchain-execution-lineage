@@ -1,0 +1,33 @@
+{
+  "computeUnitLimit": 200000,
+  "contextSlot": 400000000,
+  "executionMode": "sync",
+  "inAmount": "100000000",
+  "inputMint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+  "lastValidBlockHeight": 400000100,
+  "minOutAmount": "111111111",
+  "otherAmountThreshold": "999999999",
+  "outAmount": "1373827780",
+  "outputMint": "So11111111111111111111111111111111111111112",
+  "platformFee": {
+    "amount": "0",
+    "feeBps": 0,
+    "mode": "outputMint"
+  },
+  "priceImpactPct": "0",
+  "prioritizationFeeLamports": 20,
+  "routePlan": [
+    {
+      "inAmount": "100000000",
+      "inputMint": "So11111111111111111111111111111111111111112",
+      "inputMintDecimals": 6,
+      "marketKey": "4Ss5JMkXAD9Z7cktFEdrqeMuT6jGMF1pVozTyPHZ6zT4",
+      "outAmount": "1373827780",
+      "outputMint": "So11111111111111111111111111111111111111112",
+      "outputMintDecimals": 9,
+      "venue": "SyntheticAmm"
+    }
+  ],
+  "slippageBps": 50,
+  "transaction": "<redacted: transaction payloads are not published>"
+}

@@ -1,0 +1,327 @@
+{
+  "capture": {
+    "artifact_id": "dflow_a7f9b6c7fe21",
+    "captured_at_utc": "",
+    "pair": "",
+    "provider": "dflow",
+    "surface": "order"
+  },
+  "claims": [
+    {
+      "evidence_level": "external_program_label",
+      "explanation": "compute_budget appears as program ID in instruction 0",
+      "instruction_index": 0,
+      "object": "compute_budget (ComputeBudget111111111111111111111111111111)",
+      "predicate": "invokes_program",
+      "source_artifact_id": "dflow_a7f9b6c7fe21",
+      "subject": "instruction"
+    },
+    {
+      "evidence_level": "external_program_label",
+      "explanation": "system_program appears as program ID in instruction 2",
+      "instruction_index": 2,
+      "object": "system_program (11111111111111111111111111111111)",
+      "predicate": "invokes_program",
+      "source_artifact_id": "dflow_a7f9b6c7fe21",
+      "subject": "instruction"
+    }
+  ],
+  "decoded_transaction": {
+    "address_lookup_table_references": [
+      {
+        "lookup_table_account": "5bV6jUfhDHCQVA1WfKBUnXUsboJgoKgkzkKcxr3joew5",
+        "num_readonly_indexes": 1,
+        "num_writable_indexes": 0,
+        "readonly_indexes": [
+          0
+        ],
+        "writable_indexes": []
+      }
+    ],
+    "candidate_jito_tip_transfers": [],
+    "fee_payer": "29d2S7vB453rNYFdR5Ycwt7y9haRT5fwVwL9zTmBhfV2",
+    "instructions": [
+      {
+        "account_indexes": [],
+        "data_len": 5,
+        "data_sha256": "9bd1ac5b1b26ab8ca5f9def111cf4188b3da45e621b83ae858ed018aef8f96f1",
+        "discriminator_hex": "02400d0300",
+        "index": 0,
+        "num_accounts": 0,
+        "program_id": "ComputeBudget111111111111111111111111111111",
+        "program_id_index": 4,
+        "program_label": "compute_budget"
+      },
+      {
+        "account_indexes": [
+          0,
+          1,
+          6
+        ],
+        "data_len": 56,
+        "data_sha256": "787cc75ba3168b8fd18ef5d79cb9212a97e995cb49126c393b8318599ca5c259",
+        "discriminator_hex": "6ff8c69e91e17587",
+        "index": 1,
+        "num_accounts": 3,
+        "program_id": "3JF3sEqM796hk5WFqA6EtmEwJQ9quALszsfJyvXNQKy3",
+        "program_id_index": 5,
+        "program_label": "unknown"
+      },
+      {
+        "account_indexes": [
+          0,
+          2
+        ],
+        "data_len": 12,
+        "data_sha256": "b76875c50ef704dbbf7f02c982445971d1bbd61aebe2e4b28ddc58a1d66317d5",
+        "discriminator_hex": "0200000000000000",
+        "index": 2,
+        "num_accounts": 2,
+        "program_id": "11111111111111111111111111111111",
+        "program_id_index": 3,
+        "program_label": "system_program"
+      }
+    ],
+    "num_signature_slots": 1,
+    "recent_blockhash": "US517G5965aydkZ46HS38QLi7UQiSojurfbQfKCELFx",
+    "static_account_keys": [
+      "29d2S7vB453rNYFdR5Ycwt7y9haRT5fwVwL9zTmBhfV2",
+      "4Ss5JMkXAD9Z7cktFEdrqeMuT6jGMF1pVozTyPHZ6zT4",
+      "7tj9biW3KRJ7EEWmVUGigHiouCTXhV2dzcyvwma7Cyu7",
+      "11111111111111111111111111111111",
+      "ComputeBudget111111111111111111111111111111",
+      "3JF3sEqM796hk5WFqA6EtmEwJQ9quALszsfJyvXNQKy3"
+    ],
+    "transaction_type": "v0_with_alt",
+    "unknown_program_ids": [
+      "3JF3sEqM796hk5WFqA6EtmEwJQ9quALszsfJyvXNQKy3"
+    ]
+  },
+  "delivery": {
+    "for_jito_bundle_flag": null,
+    "jito_tip_instruction_indexes": [],
+    "notes": [
+      "compute-budget instruction present; priority fee alone does not identify a delivery service"
+    ],
+    "priority_fee_observed": true
+  },
+  "execution": {
+    "compute_budget_present": true,
+    "invoked_programs": [
+      "11111111111111111111111111111111",
+      "3JF3sEqM796hk5WFqA6EtmEwJQ9quALszsfJyvXNQKy3",
+      "ComputeBudget111111111111111111111111111111"
+    ],
+    "loaded_account_count": 7,
+    "unknown_program_ids": [
+      "3JF3sEqM796hk5WFqA6EtmEwJQ9quALszsfJyvXNQKy3"
+    ]
+  },
+  "fee": {
+    "fee_account": null,
+    "fee_bps": 0,
+    "fee_mint": null,
+    "mode": "outputMint",
+    "platform_fee_visible": "{\"amount\":\"0\",\"feeBps\":0,\"mode\":\"outputMint\"}"
+  },
+  "links": [
+    {
+      "claim_ceiling": "provider's own echo of the request; not independent corroboration",
+      "evidence": [
+        "intent.recovered_from=provider_response_echo"
+      ],
+      "evidence_level": "direct_observation",
+      "explanation": "requested input_mint equals the input_mint the provider priced",
+      "from_stage": "intent",
+      "id": "intent_to_response:input_mint",
+      "object": "response.input_mint=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      "relationship": "same_value",
+      "subject": "intent.input_mint=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      "to_stage": "provider_response"
+    },
+    {
+      "claim_ceiling": "provider's own echo of the request; not independent corroboration",
+      "evidence": [
+        "intent.recovered_from=provider_response_echo"
+      ],
+      "evidence_level": "direct_observation",
+      "explanation": "requested output_mint equals the output_mint the provider priced",
+      "from_stage": "intent",
+      "id": "intent_to_response:output_mint",
+      "object": "response.output_mint=So11111111111111111111111111111111111111112",
+      "relationship": "same_value",
+      "subject": "intent.output_mint=So11111111111111111111111111111111111111112",
+      "to_stage": "provider_response"
+    },
+    {
+      "claim_ceiling": "provider's own echo of the request; not independent corroboration",
+      "evidence": [
+        "intent.recovered_from=provider_response_echo"
+      ],
+      "evidence_level": "direct_observation",
+      "explanation": "requested in_amount equals the in_amount the provider priced",
+      "from_stage": "intent",
+      "id": "intent_to_response:in_amount",
+      "object": "response.in_amount=100000000",
+      "relationship": "same_value",
+      "subject": "intent.in_amount=100000000",
+      "to_stage": "provider_response"
+    },
+    {
+      "claim_ceiling": "both values come from the same response body",
+      "evidence_level": "direct_observation",
+      "explanation": "quoted input mint against the first route leg's input mint",
+      "from_stage": "provider_response",
+      "id": "response_to_route:input_mint",
+      "object": "route.legs[0].input_mint=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      "relationship": "same_value",
+      "subject": "response.input_mint=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      "to_stage": "route"
+    },
+    {
+      "claim_ceiling": "both values come from the same response body",
+      "evidence_level": "direct_observation",
+      "explanation": "quoted output mint against the last route leg's output mint",
+      "from_stage": "provider_response",
+      "id": "response_to_route:output_mint",
+      "object": "route.legs[last].output_mint=So11111111111111111111111111111111111111112",
+      "relationship": "same_value",
+      "subject": "response.output_mint=So11111111111111111111111111111111111111112",
+      "to_stage": "route"
+    },
+    {
+      "claim_ceiling": "the account is loaded by this transaction; it does not prove the leg executed",
+      "evidence": [
+        "route.legs[0].venue=SyntheticAmm"
+      ],
+      "evidence_level": "decoded_from_transaction",
+      "explanation": "route leg market key appears in the transaction's loaded accounts",
+      "from_stage": "route",
+      "id": "route_to_transaction:leg0_market_key",
+      "object": "transaction.loaded_accounts (n=6)",
+      "relationship": "same_value",
+      "subject": "route.legs[0].market_key=4Ss5JMkXAD9Z7cktFEdrqeMuT6jGMF1pVozTyPHZ6zT4",
+      "to_stage": "transaction_construction"
+    },
+    {
+      "claim_ceiling": "byte presence only; the program's interpretation of these bytes is unverified",
+      "evidence": [
+        "instruction[1]+32",
+        "encoding=u32_le",
+        "encoding=u64_le"
+      ],
+      "evidence_level": "candidate",
+      "explanation": "out_amount occurs verbatim in instruction bytes",
+      "from_stage": "provider_response",
+      "id": "response_to_transaction_bytes:out_amount",
+      "object": "1 byte site(s)",
+      "relationship": "candidate_byte_match",
+      "subject": "response.out_amount=1373827780",
+      "to_stage": "transaction_construction"
+    },
+    {
+      "claim_ceiling": "non-recovery is not evidence of absence: the value may be encoded, derived at runtime, or carried in an account rather than a payload",
+      "evidence_level": "unresolved",
+      "explanation": "searched every instruction payload for other_amount_threshold under the tested encoding family; no hit",
+      "from_stage": "provider_response",
+      "id": "response_to_transaction_bytes:other_amount_threshold",
+      "object": "no byte match in any instruction payload",
+      "relationship": "not_recoverable",
+      "subject": "response.other_amount_threshold=1366958642",
+      "to_stage": "transaction_construction"
+    },
+    {
+      "claim_ceiling": "non-recovery is not evidence of absence: the value may be encoded, derived at runtime, or carried in an account rather than a payload",
+      "evidence_level": "unresolved",
+      "explanation": "searched every instruction payload for in_amount under the tested encoding family; no hit",
+      "from_stage": "provider_response",
+      "id": "response_to_transaction_bytes:in_amount",
+      "object": "no byte match in any instruction payload",
+      "relationship": "not_recoverable",
+      "subject": "response.in_amount=100000000",
+      "to_stage": "transaction_construction"
+    }
+  ],
+  "quote": {
+    "error": null,
+    "expiry": null,
+    "in_amount": "100000000",
+    "input_mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+    "min_out_amount": "1366958642",
+    "out_amount": "1373827780",
+    "output_mint": "So11111111111111111111111111111111111111112",
+    "request_or_quote_id": null
+  },
+  "raw_extensions": {
+    "_adapter": "dflow",
+    "dflow:execution_mode": "sync",
+    "solana_extraction": {
+      "account_indexes_in_range": true,
+      "account_vector_len": 7,
+      "alt_resolution_attempted": false,
+      "alt_resolution_complete": false,
+      "alt_tables_referenced": 1,
+      "transaction_sha256": "5a7e67055325063ee40f6d52e32985e27a5b9f88b4784320e963ae2c411debb5",
+      "version": "v0"
+    }
+  },
+  "route": {
+    "legs": [
+      {
+        "in_amount": "100000000",
+        "input_mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "market_key": "4Ss5JMkXAD9Z7cktFEdrqeMuT6jGMF1pVozTyPHZ6zT4",
+        "out_amount": "1373827780",
+        "output_mint": "So11111111111111111111111111111111111111112",
+        "venue_or_label": "SyntheticAmm"
+      }
+    ],
+    "provider_route_label": "SyntheticAmm"
+  },
+  "schema_version": "1.0.0",
+  "settlement": {
+    "applicable": false,
+    "block_time": null,
+    "compute_units_consumed": null,
+    "notes": [],
+    "runtime_program_set": [],
+    "signature": null,
+    "slot": null,
+    "status": null
+  },
+  "transaction_construction": {
+    "encoding": "base64",
+    "fee_payer": "29d2S7vB453rNYFdR5Ycwt7y9haRT5fwVwL9zTmBhfV2",
+    "num_instructions": 3,
+    "num_lookup_tables": 1,
+    "present": true,
+    "program_ids": [
+      "11111111111111111111111111111111",
+      "3JF3sEqM796hk5WFqA6EtmEwJQ9quALszsfJyvXNQKy3",
+      "ComputeBudget111111111111111111111111111111"
+    ],
+    "program_labels": [
+      "compute_budget",
+      "system_program",
+      "unknown"
+    ],
+    "transaction_type": "v0_with_alt"
+  },
+  "unresolved": [
+    {
+      "field": "settlement",
+      "reason": "not applicable — no settlement observation was supplied",
+      "source_artifact_id": "dflow_a7f9b6c7fe21"
+    },
+    {
+      "field": "private_route_selection_policy",
+      "reason": "router internal policy is not observable from a response body or transaction bytes",
+      "source_artifact_id": "dflow_a7f9b6c7fe21"
+    },
+    {
+      "field": "delivery_channel",
+      "reason": "Jito tip match or forJitoBundle flag is infrastructure evidence, not confirmed delivery path",
+      "source_artifact_id": "dflow_a7f9b6c7fe21"
+    }
+  ]
+}

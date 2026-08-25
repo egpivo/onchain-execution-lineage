@@ -1,0 +1,101 @@
+{
+  "schema_version": "1.0.0",
+  "experiment_id": "dflow_fee_usdc_sol_live",
+  "source": {
+    "runner": "onchain-execution-lineage :: cargo run -- experiment",
+    "artifact_tree": "artifacts/experiments/dflow_fee_usdc_sol_live/ (gitignored, private)",
+    "generator": "analysis/generate_route_stable_evidence.py"
+  },
+  "design": {
+    "provider": "DFlow developer /quote",
+    "pair": "USDC/SOL",
+    "input_amount": "100000000",
+    "fee_bps_treatments": [
+      0,
+      2,
+      10
+    ],
+    "requests": 3,
+    "read_only": true
+  },
+  "verification": {
+    "accounting_identity": {
+      "formula": "routePlan[-1].outAmount - platformFee.amount = outAmount",
+      "observations": 3,
+      "exact_matches": 3,
+      "note": "Within a single response. The gross figure is reported independently in the route plan, not reconstructed from the fee."
+    },
+    "fee_rate_identity": {
+      "formula": "platformFee.amount = floor(routePlan[-1].outAmount * feeBps / 10000)",
+      "observations": 3,
+      "exact_matches": 3,
+      "note": "The fee is a floored share of gross route output, not of net."
+    },
+    "threshold_identity": {
+      "formula": "M = ceil(Q * (10000 - S) / 10000), Q = net outAmount",
+      "observations": 3,
+      "exact_matches": 3,
+      "note": "The same integer identity verified on /order also held here, on /quote, with Q taken after the platform fee. Reported separately: these 3 observations are not pooled with the 30 /order captures."
+    }
+  },
+  "evidence_ceiling": {
+    "transaction_returned": false,
+    "note": "This endpoint returned no unsigned transaction, so how (or whether) the fee is encoded into transaction bytes was not observed. Treatments are sequential live requests: differences in gross output across fee levels reflect market movement and are not a fee effect."
+  },
+  "treatments": [
+    {
+      "fee_bps": 0,
+      "gross_out_amount": "1358675553",
+      "platform_fee_amount": "0",
+      "net_out_amount": "1358675553",
+      "fee_mode": "outputMint",
+      "slippage_bps": 50,
+      "other_amount_threshold": "1351882176",
+      "min_out_equals_threshold": true,
+      "route_venues": [
+        "Tessera V"
+      ],
+      "route_leg_count": 1,
+      "transaction_present": false,
+      "accounting_holds": true,
+      "fee_rate_holds": true,
+      "threshold_identity_holds": true
+    },
+    {
+      "fee_bps": 2,
+      "gross_out_amount": "1358675205",
+      "platform_fee_amount": "271735",
+      "net_out_amount": "1358403470",
+      "fee_mode": "outputMint",
+      "slippage_bps": 50,
+      "other_amount_threshold": "1351611453",
+      "min_out_equals_threshold": true,
+      "route_venues": [
+        "Tessera V"
+      ],
+      "route_leg_count": 1,
+      "transaction_present": false,
+      "accounting_holds": true,
+      "fee_rate_holds": true,
+      "threshold_identity_holds": true
+    },
+    {
+      "fee_bps": 10,
+      "gross_out_amount": "1358674830",
+      "platform_fee_amount": "1358674",
+      "net_out_amount": "1357316156",
+      "fee_mode": "outputMint",
+      "slippage_bps": 50,
+      "other_amount_threshold": "1350529576",
+      "min_out_equals_threshold": true,
+      "route_venues": [
+        "Tessera V"
+      ],
+      "route_leg_count": 1,
+      "transaction_present": false,
+      "accounting_holds": true,
+      "fee_rate_holds": true,
+      "threshold_identity_holds": true
+    }
+  ]
+}

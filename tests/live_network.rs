@@ -6,11 +6,11 @@
 //! cargo test --test live_network -- --ignored --nocapture
 //! ```
 
-use dflow_lineage::api::{fetch_quote, QuoteRequest, DEV_QUOTE_ENDPOINT};
-use dflow_lineage::capture::run_capture;
-use dflow_lineage::lookup_tables::resolve_lookup_table;
-use dflow_lineage::rpc::fetch_transaction_base64;
-use dflow_lineage::transaction::decode_base64_transaction;
+use onchain_execution_lineage::api::{fetch_quote, QuoteRequest, DEV_QUOTE_ENDPOINT};
+use onchain_execution_lineage::capture::run_capture;
+use onchain_execution_lineage::lookup_tables::resolve_lookup_table;
+use onchain_execution_lineage::rpc::fetch_transaction_base64;
+use onchain_execution_lineage::transaction::decode_base64_transaction;
 use sha2::{Digest, Sha256};
 use std::fs;
 use std::path::PathBuf;
@@ -58,8 +58,7 @@ async fn live_dev_quote_is_quote_only_surface() {
 #[tokio::test]
 #[ignore = "requires network; run with: cargo test --test live_network -- --ignored"]
 async fn live_capture_writes_raw_parsed_and_meta() {
-    let dir =
-        std::env::temp_dir().join(format!("dflow_lineage_live_capture_{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("oel_live_capture_{}", std::process::id()));
     let _ = fs::remove_dir_all(&dir);
     fs::create_dir_all(&dir).unwrap();
 
